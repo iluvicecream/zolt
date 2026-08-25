@@ -2,18 +2,20 @@ const std = @import("std");
 
 const Io = std.Io;
 
-pub const Handler = *const fn (req: *std.http.Server.Request) anyerror!void;
+pub const Handler = *const fn (io: Io, allocator: std.mem.Allocator, req: *std.http.Server.Request) anyerror!void;
 
 pub const HttpSession = struct {
     io: Io,
     server: Io.net.Server,
     handler: Handler,
+    allocator: std.mem.Allocator,
 
-    pub fn init(io: Io, addr: Io.net.IpAddress, handler: Handler) !HttpSession {
+    pub fn init(io: Io, addr: Io.net.IpAddress, allocator: std.mem.Allocator, handler: Handler) !HttpSession {
         return .{
             .io = io,
             .server = try addr.listen(io, .{}),
             .handler = handler,
+            .allocator = allocator,
         };
     }
 
@@ -43,6 +45,6 @@ pub const HttpSession = struct {
         var req = try http_server.receiveHead();
         std.log.debug("http received request method={} target={s}", .{ req.head.method, req.head.target });
 
-        try self.handler(&req);
+        try self.handler(self.io, self.allocator, &req);
     }
 };
