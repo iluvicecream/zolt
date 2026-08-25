@@ -1,0 +1,4 @@
+-- zoltd configuration
+--
+-- Not interpreted yet: this file is read at server startup but its
+-- contents are currently unused.
