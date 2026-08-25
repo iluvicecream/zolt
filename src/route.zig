@@ -7,7 +7,53 @@ const HttpRsp = @import("protocol/http_rsp.zig").HttpRsp;
 
 pub const max_content_size = 16 * 1024;
 
+const max_output_size = 16 * 1024;
+
 const not_found_body = "𐔌՞.‸.՞𐦯 not found";
+
+const RequestCtx = struct {
+    output: [max_output_size]u8 = undefined,
+    len: usize = 0,
+    echoed: bool = false,
+    overflowed: bool = false,
+
+    fn append(self: *RequestCtx, s: []const u8) void {
+        if (self.overflowed or s.len > self.output.len - self.len) {
+            self.overflowed = true;
+            return;
+        }
+        @memcpy(self.output[self.len..][0..s.len], s);
+        self.len += s.len;
+    }
+};
+
+const RuntimeFn = struct {
+    name: [:0]const u8,
+    func: luau.CFunction,
+};
+
+const runtime_fns = [_]RuntimeFn{
+    .{ .name = "echo", .func = luaEcho },
+};
+
+fn luaEcho(L: *luau.State) callconv(.c) c_int {
+    const raw_ctx = luau.upvaluePtr(L, 1) orelse return 0;
+    const ctx: *RequestCtx = @ptrCast(@alignCast(raw_ctx));
+    ctx.echoed = true;
+
+    const argc: usize = @intCast(luau.getTop(L));
+    for (0..argc) |i| {
+        const index: c_int = @intCast(i + 1);
+        if (luau.getString(L, index)) |s| ctx.append(s);
+    }
+    return 0;
+}
+
+fn registerRuntime(L: *luau.State, ctx: *RequestCtx) void {
+    for (runtime_fns) |f| {
+        luau.registerFunction(L, -1, f.name, ctx, f.func);
+    }
+}
 
 const CachedScript = struct {
     path: []const u8,
@@ -62,7 +108,8 @@ pub const RouteHandler = struct {
             return err;
         };
         if (bytecode) |bc| {
-            self.runScript(target, bc, &http_rsp) catch |err| {
+            var ctx = RequestCtx{};
+            self.runScript(target, bc, &ctx, &http_rsp) catch |err| {
                 std.log.err("route script error target={s} err={}", .{ target, err });
                 return err;
             };
@@ -122,10 +169,11 @@ pub const RouteHandler = struct {
         return null;
     }
 
-    fn runScript(self: *RouteHandler, target: []const u8, bytecode: []const u8, rsp: *HttpRsp) !void {
+    fn runScript(self: *RouteHandler, target: []const u8, bytecode: []const u8, ctx: *RequestCtx, rsp: *HttpRsp) !void {
         errdefer luau.settop(self.L, 0);
 
         luau.pushSandboxEnv(self.L);
+        registerRuntime(self.L, ctx);
 
         var chunk_name_buf: [256]u8 = undefined;
         const chunk_name = std.fmt.bufPrintZ(&chunk_name_buf, "={s}", .{target}) catch "=route.lua";
@@ -138,6 +186,16 @@ pub const RouteHandler = struct {
             std.log.err("route lua runtime error err={s} target={s}", .{ luau.errorMessage(self.L), target });
             return err;
         };
+
+        if (ctx.echoed) {
+            if (ctx.overflowed) {
+                std.log.err("route lua echo output too large target={s}", .{target});
+                return error.RouteScriptOutputTooLarge;
+            }
+            rsp.content = ctx.output[0..ctx.len];
+            return;
+        }
+
         if (luau.typeOf(self.L, -1) != .table) {
             std.log.err("route lua expected to return a table target={s}", .{target});
             return error.RouteScriptReturnType;

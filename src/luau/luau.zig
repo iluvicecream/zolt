@@ -4,17 +4,23 @@ pub const State = opaque {};
 
 const LUA_GLOBALSINDEX: c_int = -10002;
 
+pub const CFunction = *const fn (L: *State) callconv(.c) c_int;
+
 extern fn luaL_newstate() ?*State;
 extern fn luaL_openlibs(L: *State) void;
 extern fn lua_close(L: *State) void;
 extern fn lua_createtable(L: *State, narr: c_int, nrec: c_int) void;
 extern fn lua_getfield(L: *State, idx: c_int, k: [*:0]const u8) c_int;
+extern fn lua_gettop(L: *State) c_int;
 extern fn lua_settop(L: *State, idx: c_int) void;
 extern fn lua_setmetatable(L: *State, objindex: c_int) c_int;
 extern fn lua_setfield(L: *State, idx: c_int, k: [*:0]const u8) void;
 extern fn lua_pushvalue(L: *State, idx: c_int) void;
+extern fn lua_pushcclosurek(L: *State, f: CFunction, debugname: ?[*:0]const u8, nup: c_int, cont: ?*anyopaque) void;
+extern fn lua_pushlightuserdatatagged(L: *State, p: ?*anyopaque, tag: c_int) void;
 extern fn lua_tolstring(L: *State, idx: c_int, len: ?*usize) ?[*:0]const u8;
 extern fn lua_tonumberx(L: *State, idx: c_int, isnum: ?*c_int) f64;
+extern fn lua_touserdata(L: *State, idx: c_int) ?*anyopaque;
 extern fn lua_pcall(L: *State, nargs: c_int, nresults: c_int, errfunc: c_int) c_int;
 extern fn luau_load(L: *State, chunkname: [*:0]const u8, data: [*]const u8, size: usize, env: c_int) c_int;
 extern fn luau_compile(source: [*]const u8, size: usize, options: ?*anyopaque, outsize: *usize) ?[*]u8;
@@ -106,6 +112,10 @@ pub fn settop(L: *State, index: c_int) void {
     lua_settop(L, index);
 }
 
+pub fn getTop(L: *State) c_int {
+    return lua_gettop(L);
+}
+
 pub fn typeOf(L: *State, index: c_int) Type {
     return @enumFromInt(lua_type(L, index));
 }
@@ -124,6 +134,20 @@ pub fn getField(L: *State, index: c_int, key: [:0]const u8) void {
 pub fn getString(L: *State, index: c_int) ?[]const u8 {
     const str = lua_tolstring(L, index, null);
     return if (str) |s| std.mem.span(s) else null;
+}
+
+pub fn registerFunction(L: *State, table_index: c_int, name: [:0]const u8, ctx: ?*anyopaque, f: CFunction) void {
+    const table_abs: c_int = if (table_index < 0)
+        lua_gettop(L) + table_index + 1
+    else
+        table_index;
+    lua_pushlightuserdatatagged(L, ctx, 0);
+    lua_pushcclosurek(L, f, name.ptr, 1, null);
+    lua_setfield(L, table_abs, name.ptr);
+}
+
+pub fn upvaluePtr(L: *State, n: c_int) ?*anyopaque {
+    return lua_touserdata(L, LUA_GLOBALSINDEX - n);
 }
 
 pub fn pushSandboxEnv(L: *State) void {
