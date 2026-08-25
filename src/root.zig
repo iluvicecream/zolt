@@ -5,3 +5,4 @@ const Io = std.Io;
 pub const Protocol = @import("protocol/protocol.zig");
 pub const Network = @import("network/network.zig");
 pub const Config = @import("config/config.zig").Config;
+pub const Luau = @import("zolt_luau");

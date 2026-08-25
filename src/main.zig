@@ -14,6 +14,7 @@ pub fn main(init: std.process.Init) !void {
 fn loadConfig(io: Io, allocator: std.mem.Allocator) !void {
     var config = zolt.Config.load(io, allocator) catch |err| {
         std.log.err("failed to load config err={}", .{err});
+        std.process.exit(10); // INVALID_CONFIG
         return err;
     };
     defer config.deinit(allocator);
@@ -26,6 +27,7 @@ fn httpServerSetup(io: Io) !void {
     };
     var session = HttpSession.init(io, address, handleRequest) catch |err| {
         std.log.err("failed to init http session err={}", .{err});
+        std.process.exit(11); // FAILED_HTTP_SESSION
         return err;
     };
     defer session.deinit();
@@ -34,6 +36,7 @@ fn httpServerSetup(io: Io) !void {
 
     session.run() catch |err| {
         std.log.err("failed to run http session err={}", .{err});
+        std.process.exit(11); // FAILED_HTTP_SESSION
     };
 }
 
