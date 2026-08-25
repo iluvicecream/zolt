@@ -14,6 +14,26 @@ extern fn lua_tonumberx(L: *State, idx: c_int, isnum: ?*c_int) f64;
 extern fn lua_pcall(L: *State, nargs: c_int, nresults: c_int, errfunc: c_int) c_int;
 extern fn luau_load(L: *State, chunkname: [*:0]const u8, data: [*]const u8, size: usize, env: c_int) c_int;
 extern fn luau_compile(source: [*]const u8, size: usize, options: ?*anyopaque, outsize: *usize) ?[*]u8;
+extern fn lua_type(L: *State, index: c_int) c_int;
+
+pub const Type = enum(c_int) {
+    none = -1,
+    nil = 0,
+    boolean = 1,
+    light_userdata = 2,
+    number = 3,
+    integer = 4,
+    vector = 5,
+    string = 6,
+    table = 7,
+    function = 8,
+    userdata = 9,
+    thread = 10,
+    buffer = 11,
+    class = 12,
+    object = 13,
+    _,
+};
 
 pub const RunError = error{
     CompileFailed,
@@ -71,4 +91,23 @@ pub fn errorMessage(L: *State) []const u8 {
 
 pub fn settop(L: *State, index: c_int) void {
     lua_settop(L, index);
+}
+
+pub fn typeOf(L: *State, index: c_int) Type {
+    return @enumFromInt(lua_type(L, index));
+}
+
+pub fn getFieldString(L: *State, index: c_int, key: [:0]const u8) ?[]const u8 {
+    _ = lua_getfield(L, index, key.ptr);
+    defer lua_settop(L, index - 1);
+    const str = lua_tolstring(L, -1, null);
+    return if (str) |s| std.mem.span(s) else null;
+}
+
+pub fn getFieldNumber(L: *State, index: c_int, key: [:0]const u8) ?f64 {
+    _ = lua_getfield(L, index, key.ptr);
+    defer lua_settop(L, index - 1);
+    var isnum: c_int = 0;
+    const n = lua_tonumberx(L, -1, &isnum);
+    return if (isnum != 0) n else null;
 }
