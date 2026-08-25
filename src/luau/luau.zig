@@ -7,8 +7,12 @@ const LUA_GLOBALSINDEX: c_int = -10002;
 extern fn luaL_newstate() ?*State;
 extern fn luaL_openlibs(L: *State) void;
 extern fn lua_close(L: *State) void;
+extern fn lua_createtable(L: *State, narr: c_int, nrec: c_int) void;
 extern fn lua_getfield(L: *State, idx: c_int, k: [*:0]const u8) c_int;
 extern fn lua_settop(L: *State, idx: c_int) void;
+extern fn lua_setmetatable(L: *State, objindex: c_int) c_int;
+extern fn lua_setfield(L: *State, idx: c_int, k: [*:0]const u8) void;
+extern fn lua_pushvalue(L: *State, idx: c_int) void;
 extern fn lua_tolstring(L: *State, idx: c_int, len: ?*usize) ?[*:0]const u8;
 extern fn lua_tonumberx(L: *State, idx: c_int, isnum: ?*c_int) f64;
 extern fn lua_pcall(L: *State, nargs: c_int, nresults: c_int, errfunc: c_int) c_int;
@@ -57,17 +61,26 @@ pub fn version(L: *State) []const u8 {
     return if (str) |s| std.mem.span(s) else "unknown";
 }
 
+pub fn compile(source: []const u8, out_size: *usize) ?[]u8 {
+    const bytecode = luau_compile(source.ptr, source.len, null, out_size) orelse return null;
+    if (bytecode[0] == 0) {
+        std.c.free(@ptrCast(bytecode));
+        return null;
+    }
+    return bytecode[0..out_size.*];
+}
+
+pub fn loadBytecode(L: *State, chunk_name: [:0]const u8, bytecode: []const u8, env: c_int) RunError!void {
+    if (luau_load(L, chunk_name.ptr, bytecode.ptr, bytecode.len, env) != 0)
+        return error.CompileFailed;
+}
+
 pub fn loadString(L: *State, chunk_name: [:0]const u8, source: []const u8) RunError!void {
     var out_size: usize = 0;
-    const bytecode = luau_compile(source.ptr, source.len, null, &out_size) orelse
+    const bytecode = compile(source, &out_size) orelse
         return error.CompileFailed;
     defer std.c.free(@ptrCast(bytecode));
-
-    if (bytecode[0] == 0)
-        return error.CompileFailed;
-
-    if (luau_load(L, chunk_name.ptr, bytecode, out_size, 0) != 0)
-        return error.CompileFailed;
+    try loadBytecode(L, chunk_name, bytecode, 0);
 }
 
 pub fn pcall(L: *State, nargs: c_int, nresults: c_int) RunError!void {
@@ -102,6 +115,25 @@ pub fn getFieldString(L: *State, index: c_int, key: [:0]const u8) ?[]const u8 {
     defer lua_settop(L, index - 1);
     const str = lua_tolstring(L, -1, null);
     return if (str) |s| std.mem.span(s) else null;
+}
+
+pub fn getField(L: *State, index: c_int, key: [:0]const u8) void {
+    _ = lua_getfield(L, index, key.ptr);
+}
+
+pub fn getString(L: *State, index: c_int) ?[]const u8 {
+    const str = lua_tolstring(L, index, null);
+    return if (str) |s| std.mem.span(s) else null;
+}
+
+pub fn pushSandboxEnv(L: *State) void {
+    lua_createtable(L, 0, 4); // env
+    lua_createtable(L, 0, 1); // metatable
+    _ = lua_getfield(L, LUA_GLOBALSINDEX, "_G");
+    lua_setfield(L, -2, "__index");
+    _ = lua_setmetatable(L, -2);
+    lua_pushvalue(L, -1);
+    lua_setfield(L, -2, "_G");
 }
 
 pub fn getFieldNumber(L: *State, index: c_int, key: [:0]const u8) ?f64 {
