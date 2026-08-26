@@ -45,7 +45,8 @@ pub const HttpRsp = struct {
     }
 
     pub fn setHeader(self: *HttpRsp, name: []const u8, value: []const u8) bool {
-        if (name.len == 0 or self.header_count >= self.headers.len) return false;
+        if (!isValidHeaderName(name) or !isValidHeaderValue(value)) return false;
+        if (self.header_count >= self.headers.len) return false;
         const name_copy = self.storeHeaderString(name) orelse return false;
         const value_copy = self.storeHeaderString(value) orelse return false;
         self.headers[self.header_count] = .{ .name = name_copy, .value = value_copy };
@@ -78,5 +79,46 @@ pub const HttpRsp = struct {
         @memcpy(self.header_storage[start..][0..s.len], s);
         self.header_storage_len += s.len;
         return self.header_storage[start..self.header_storage_len];
+    }
+
+    pub fn isValidHeaderName(name: []const u8) bool {
+        if (name.len == 0) return false;
+        for (name) |c| {
+            if (!isTokenChar(c)) return false;
+        }
+        return true;
+    }
+
+    pub fn isValidHeaderValue(value: []const u8) bool {
+        for (value) |c| {
+            if (c == 0x09) continue; // HTAB
+            if (c < 0x20 or c == 0x7f) return false; // CTLs
+        }
+        return true;
+    }
+
+    fn isTokenChar(c: u8) bool {
+        return switch (c) {
+            'a'...'z',
+            'A'...'Z',
+            '0'...'9',
+            '!',
+            '#',
+            '$',
+            '%',
+            '&',
+            '\'',
+            '*',
+            '+',
+            '-',
+            '.',
+            '^',
+            '_',
+            '`',
+            '|',
+            '~',
+            => true,
+            else => false,
+        };
     }
 };

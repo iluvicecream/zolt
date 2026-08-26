@@ -4,6 +4,7 @@ const Io = std.Io;
 
 const zolt = @import("zolt");
 const RouteHandler = zolt.Route.RouteHandler;
+const ScriptCache = zolt.Route.ScriptCache;
 const ConnHandler = zolt.Network.ConnHandler;
 const HttpSession = zolt.Network.HttpSession;
 
@@ -36,12 +37,13 @@ fn loadConfig(io: Io, allocator: std.mem.Allocator, path: []const u8) !zolt.Conf
 
 const RouteFactory = struct {
     show_runtime_errors: bool,
+    cache: ScriptCache,
 
     fn init(ctx: *anyopaque, allocator: std.mem.Allocator) anyerror!*anyopaque {
-        const self: *const RouteFactory = @ptrCast(@alignCast(ctx));
+        const self: *RouteFactory = @ptrCast(@alignCast(ctx));
         const handler = try allocator.create(RouteHandler);
         errdefer allocator.destroy(handler);
-        handler.* = try RouteHandler.init(allocator, self.show_runtime_errors);
+        handler.* = try RouteHandler.init(allocator, self.show_runtime_errors, &self.cache);
         return handler;
     }
 
@@ -59,7 +61,11 @@ fn httpServerSetup(io: Io, config: zolt.Config, allocator: std.mem.Allocator) !v
         return err;
     };
 
-    var factory = RouteFactory{ .show_runtime_errors = config.is_show_runtime_error };
+    var factory = RouteFactory{
+        .show_runtime_errors = config.is_show_runtime_error,
+        .cache = ScriptCache.init(allocator, ScriptCache.max_cached_scripts),
+    };
+    defer factory.cache.deinit(io);
     const conn_handler: ConnHandler = .{
         .ctx = &factory,
         .init = RouteFactory.init,

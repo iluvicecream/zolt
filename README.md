@@ -46,10 +46,11 @@ return {
 }
 ```
 
-When `isShowRuntimeError` is `true`, route scripts that fail to compile or run
-produce a `500` response whose body contains the error message (including the
-file/line for compile errors and a stack traceback for runtime errors) instead
-of just closing the connection. It defaults to `false`.
+Route scripts that fail to compile or run always produce a `500` response.
+When `isShowRuntimeError` is `true`, the body contains the error message
+(including the file/line for compile errors and a stack traceback for runtime
+errors); when `false`, the body is a generic `Internal Server Error`. It
+defaults to `false`.
 
 `maxConnections` caps how many clients are handled at once (default `64`).
 Every accepted connection runs on its own thread with its own fresh Luau VM,
@@ -68,6 +69,8 @@ local shared = require("../lib/util")
 
 - Paths resolve relative to the requiring file (not the request URL) and may
   use `./` and `../` as long as they stay inside the working directory.
+  Symlinks and non-regular files are rejected, so a module can never escape
+  the working directory.
 - When the spec has no extension, `require` tries the exact name first, then
   appends `.luau` and `.lua`.
 - A module must return its exports: `return { ... }` (or a function).
@@ -105,6 +108,8 @@ echo("page not found")
 - Each connection runs on its own thread with its own Luau VM (`maxConnections`
   concurrent connections by default)
 - Each connection serves multiple keep-alive requests
+- Compiled scripts are cached in a shared, mtime-checked cache (up to 256
+  files, LRU eviction); file changes are picked up within about a second
 
 ## Project layout
 

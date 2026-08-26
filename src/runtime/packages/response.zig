@@ -35,6 +35,9 @@ fn luaHeader(L: *luau.State) callconv(.c) c_int {
     const value = luau.getString(L, 2) orelse
         return raise(L, "header: expected a string value", .{});
 
+    if (!HttpRsp.isValidHeaderName(name) or !HttpRsp.isValidHeaderValue(value))
+        return raise(L, "header: invalid header name or value", .{});
+
     if (!rsp.setHeader(name, value))
         return raise(L, "header: too many headers or header value too long", .{});
     return 0;

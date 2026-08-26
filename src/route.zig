@@ -1,42 +1,32 @@
 const std = @import("std");
 
 const Io = std.Io;
-const Dir = Io.Dir;
 const runtime = @import("runtime/runtime.zig");
+const script_cache = @import("script_cache.zig");
 const HttpRsp = @import("protocol/http_rsp.zig").HttpRsp;
 
 pub const max_content_size = 16 * 1024;
 
-const CachedScript = struct {
-    path: []const u8,
-    mtime: Io.Timestamp,
-    size: u64,
-    bytecode: []u8,
-};
+pub const ScriptCache = script_cache.ScriptCache;
 
 pub const RouteHandler = struct {
     allocator: std.mem.Allocator,
     rt: runtime.Runtime,
-    scripts: std.ArrayList(CachedScript),
+    cache: *ScriptCache,
     show_runtime_errors: bool,
 
-    pub fn init(allocator: std.mem.Allocator, show_runtime_errors: bool) !RouteHandler {
-        const rt = try runtime.Runtime.init(allocator);
+    pub fn init(allocator: std.mem.Allocator, show_runtime_errors: bool, cache: *ScriptCache) !RouteHandler {
+        const rt = try runtime.Runtime.init(allocator, cache);
         errdefer rt.deinit();
         return .{
             .allocator = allocator,
             .rt = rt,
-            .scripts = .empty,
+            .cache = cache,
             .show_runtime_errors = show_runtime_errors,
         };
     }
 
     pub fn deinit(self: *RouteHandler) void {
-        for (self.scripts.items) |script| {
-            self.allocator.free(script.path);
-            std.c.free(@ptrCast(script.bytecode.ptr));
-        }
-        self.scripts.deinit(self.allocator);
         self.rt.deinit();
         self.* = undefined;
     }
@@ -50,96 +40,61 @@ pub const RouteHandler = struct {
     fn handleRequest(self: *RouteHandler, io: Io, req: *std.http.Server.Request) !void {
         defer self.rt.endRequest();
 
-        const target = resolveTarget(req.head.target) orelse {
+        var path_buf: [4096]u8 = undefined;
+        const target = resolveTarget(req.head.target, &path_buf) orelse {
             std.log.warn("invalid route target target={s}", .{req.head.target});
             return respondNotFound(req);
         };
 
         var http_rsp: HttpRsp = .{};
 
-        const bytecode = self.getBytecode(io, target, &http_rsp) catch |err| {
+        const lookup = self.cache.acquire(io, self.allocator, target, max_content_size) catch |err| {
             std.log.err("route script error target={s} err={}", .{ target, err });
-            if (self.show_runtime_errors and http_rsp.body_used)
-                return req.respond(http_rsp.toContent(), http_rsp.toRespondOptions());
-            return err;
+            return respondServerError(req, &http_rsp, null);
         };
-        if (bytecode) |bc| {
-            self.runScript(io, target, bc, &http_rsp) catch |err| {
-                std.log.err("route script error target={s} err={}", .{ target, err });
-                if (self.show_runtime_errors) {
-                    http_rsp.setStatus(.internal_server_error, null);
-                    http_rsp.append(self.rt.errorMessage());
-                    _ = http_rsp.setHeader("content-type", "text/plain; charset=utf-8");
-                    return req.respond(http_rsp.toContent(), http_rsp.toRespondOptions());
+        switch (lookup) {
+            .not_found => {
+                std.log.warn("route handler script not found target={s}", .{req.head.target});
+                return respondNotFound(req);
+            },
+            .too_large => {
+                std.log.err("route script source too large target={s}", .{target});
+                return respondServerError(req, &http_rsp, "route script source exceeds 16 KB");
+            },
+            .compile_error => |blob| {
+                defer std.c.free(@ptrCast(blob.ptr));
+                var chunk_name_buf: [256]u8 = undefined;
+                const compile_err = self.rt.compileErrorMessage(chunkName(target, &chunk_name_buf), blob);
+                std.log.err("route lua compile error target={s} err={s}", .{ target, compile_err });
+                return respondServerError(
+                    req,
+                    &http_rsp,
+                    if (self.show_runtime_errors) compile_err else null,
+                );
+            },
+            .ok => |bytecode| {
+                defer self.allocator.free(bytecode);
+                self.runScript(io, target, bytecode, &http_rsp) catch |err| {
+                    std.log.err("route lua error err={} target={s}", .{ err, target });
+                    const detail: ?[]const u8 = switch (err) {
+                        error.RouteScriptOutputTooLarge => "route script output exceeds 16 KB",
+                        else => if (self.show_runtime_errors) self.rt.errorMessage() else null,
+                    };
+                    return respondServerError(req, &http_rsp, detail);
+                };
+
+                if (http_rsp.body_used) {
+                    if (http_rsp.body_overflowed) {
+                        std.log.err("route lua output too large target={s}", .{target});
+                        return respondServerError(req, &http_rsp, "route script output exceeds 16 KB");
+                    }
+                    if (!http_rsp.hasHeader("content-type"))
+                        _ = http_rsp.setHeader("content-type", "text/html; charset=utf-8");
                 }
-                return err;
-            };
-        } else {
-            std.log.warn("route handler script not found target={s}", .{req.head.target});
-            return respondNotFound(req);
+
+                try req.respond(http_rsp.toContent(), http_rsp.toRespondOptions());
+            },
         }
-
-        try req.respond(http_rsp.toContent(), http_rsp.toRespondOptions());
-    }
-
-    fn getBytecode(self: *RouteHandler, io: Io, path: []const u8, rsp: *HttpRsp) !?[]const u8 {
-        const stat = Dir.statFile(.cwd(), io, path, .{}) catch |err| switch (err) {
-            error.FileNotFound => return null,
-            else => return err,
-        };
-
-        if (self.findScript(path)) |script| {
-            if (script.mtime.nanoseconds == stat.mtime.nanoseconds and script.size == stat.size)
-                return script.bytecode;
-        }
-
-        const content = try Dir.readFileAlloc(.cwd(), io, path, self.allocator, .limited(max_content_size));
-        defer self.allocator.free(content);
-
-        var out_size: usize = 0;
-        const bytecode = runtime.compile(content, &out_size) orelse {
-            std.log.err("route lua compile error target={s}", .{path});
-            return error.RouteCompileFailed;
-        };
-        errdefer std.c.free(@ptrCast(bytecode.ptr));
-
-        if (runtime.isCompileError(bytecode)) {
-            var chunk_name_buf: [256]u8 = undefined;
-            const compile_err = self.rt.compileErrorMessage(chunkName(path, &chunk_name_buf), bytecode);
-            std.log.err("route lua compile error target={s} err={s}", .{ path, compile_err });
-            if (self.show_runtime_errors) {
-                rsp.setStatus(.internal_server_error, null);
-                rsp.append(compile_err);
-                _ = rsp.setHeader("content-type", "text/plain; charset=utf-8");
-            }
-            return error.RouteCompileFailed;
-        }
-
-        if (self.findScript(path)) |script| {
-            std.c.free(@ptrCast(script.bytecode.ptr));
-            script.bytecode = bytecode;
-            script.mtime = stat.mtime;
-            script.size = stat.size;
-            return script.bytecode;
-        }
-
-        const owned_path = try self.allocator.dupe(u8, path);
-        errdefer self.allocator.free(owned_path);
-
-        try self.scripts.append(self.allocator, .{
-            .path = owned_path,
-            .mtime = stat.mtime,
-            .size = stat.size,
-            .bytecode = bytecode,
-        });
-        return self.scripts.items[self.scripts.items.len - 1].bytecode;
-    }
-
-    fn findScript(self: *RouteHandler, path: []const u8) ?*CachedScript {
-        for (self.scripts.items) |*script| {
-            if (std.mem.eql(u8, script.path, path)) return script;
-        }
-        return null;
     }
 
     fn runScript(self: *RouteHandler, io: Io, target: []const u8, bytecode: []const u8, rsp: *HttpRsp) !void {
@@ -173,17 +128,31 @@ fn chunkName(path: []const u8, buf: *[256]u8) [:0]const u8 {
     return std.fmt.bufPrintZ(buf, "={s}", .{path}) catch "=route.luau";
 }
 
-fn resolveTarget(target: []const u8) ?[]const u8 {
+fn resolveTarget(target: []const u8, buf: []u8) ?[]const u8 {
     if (target.len == 0 or target[0] != '/') return null;
 
     var path = target[1..];
     if (std.mem.indexOfAny(u8, path, "?#")) |i| path = path[0..i];
 
     if (path.len == 0) return "index.luau";
-    if (path[0] == '/' or std.mem.indexOf(u8, path, "//") != null) return null;
-    if (std.mem.indexOf(u8, path, "..") != null) return null;
-    if (std.mem.indexOfAny(u8, path, "\\\x00") != null) return null;
-    return path;
+
+    var pos: usize = 0;
+    var it = std.mem.splitScalar(u8, path, '/');
+    while (it.next()) |seg| {
+        if (seg.len == 0 or std.mem.eql(u8, seg, ".")) continue;
+        if (std.mem.eql(u8, seg, "..")) return null;
+        if (std.mem.indexOfAny(u8, seg, "\\\x00") != null) return null;
+        if (pos + seg.len + 1 > buf.len) return null;
+        if (pos != 0) {
+            buf[pos] = '/';
+            pos += 1;
+        }
+        @memcpy(buf[pos..][0..seg.len], seg);
+        pos += seg.len;
+    }
+
+    if (pos == 0) return "index.luau";
+    return buf[0..pos];
 }
 
 fn respondNotFound(req: *std.http.Server.Request) !void {
@@ -192,4 +161,12 @@ fn respondNotFound(req: *std.http.Server.Request) !void {
     http_rsp.append("𐔌՞.‸.՞𐦯 not found");
     _ = http_rsp.setHeader("content-type", "text/plain; charset=utf-8");
     try req.respond(http_rsp.toContent(), http_rsp.toRespondOptions());
+}
+
+fn respondServerError(req: *std.http.Server.Request, rsp: *HttpRsp, detail: ?[]const u8) !void {
+    rsp.reset();
+    rsp.setStatus(.internal_server_error, null);
+    rsp.append(detail orelse "Internal Server Error");
+    _ = rsp.setHeader("content-type", "text/plain; charset=utf-8");
+    try req.respond(rsp.toContent(), rsp.toRespondOptions());
 }

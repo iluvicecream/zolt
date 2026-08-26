@@ -11,12 +11,6 @@ pub const max_module_size = 16 * 1024;
 const max_path_len = 1024;
 const max_msg_len = 512;
 
-// Registers a `require` host function on the table at the top of the stack
-// (the per-request sandbox env). The closure captures the runtime, the env,
-// and a per-request module cache as upvalues:
-//   1. ctx   (*Runtime)
-//   2. env   (table, sandbox environment modules run in)
-//   3. cache (table, resolved path -> module return value)
 pub fn register(L: *luau.State, rt: *Runtime) void {
     const env = luau.getTop(L);
     luau.pushLightUserdata(L, rt);
@@ -69,25 +63,21 @@ fn requireFn(L: *luau.State) callconv(.c) c_int {
     if (rt.isLoading(chosen))
         return raise(L, "require: cyclic dependency detected while loading '{s}'", .{chosen});
 
-    const content = Dir.readFileAlloc(.cwd(), rt.io, chosen, rt.allocator, .limited(max_module_size)) catch |err| switch (err) {
-        error.FileNotFound => return raise(L, "require: module '{s}' not found", .{spec}),
-        error.StreamTooLong => return raise(L, "require: module '{s}' exceeds {d} bytes", .{ chosen, max_module_size }),
-        else => return raise(L, "require: failed to read module '{s}' ({s})", .{ chosen, @errorName(err) }),
+    const bytecode: []const u8 = blk: {
+        const lookup = rt.cache.acquire(rt.io, rt.allocator, chosen, max_module_size) catch |err|
+            return raise(L, "require: failed to load module '{s}' ({s})", .{ chosen, @errorName(err) });
+        switch (lookup) {
+            .ok => |bc| break :blk bc,
+            .not_found => return raise(L, "require: module '{s}' not found", .{spec}),
+            .too_large => return raise(L, "require: module '{s}' exceeds {d} bytes", .{ chosen, max_module_size }),
+            .compile_error => |blob| {
+                var msg_buf: [max_msg_len]u8 = undefined;
+                const msg = compileErrorMessage(L, chosen, blob, &msg_buf);
+                std.c.free(@ptrCast(blob.ptr));
+                return raise(L, "{s}", .{msg});
+            },
+        }
     };
-
-    var out_size: usize = 0;
-    const bytecode = runtime.compile(content, &out_size) orelse {
-        rt.allocator.free(content);
-        return raise(L, "require: out of memory while compiling '{s}'", .{chosen});
-    };
-
-    if (runtime.isCompileError(bytecode)) {
-        var msg_buf: [max_msg_len]u8 = undefined;
-        const msg = compileErrorMessage(L, chosen, bytecode, &msg_buf);
-        rt.allocator.free(content);
-        std.c.free(@ptrCast(bytecode.ptr));
-        return raise(L, "{s}", .{msg});
-    }
 
     var chunk_buf: [max_path_len + 8]u8 = undefined;
     const chunk_name = chunkName(chosen, &chunk_buf);
@@ -102,24 +92,21 @@ fn requireFn(L: *luau.State) callconv(.c) c_int {
     luau.loadBytecode(L, chunk_name, bytecode, -2) catch {
         rt.popLoading();
         rt.current_requirer = prev_requirer;
-        rt.allocator.free(content);
-        std.c.free(@ptrCast(bytecode.ptr));
+        rt.allocator.free(bytecode);
         return raise(L, "require: failed to load module '{s}'", .{chosen});
     };
 
     if (luau.pcall(L, 0, 1, -2)) |_| {} else |_| {
         rt.popLoading();
         rt.current_requirer = prev_requirer;
-        rt.allocator.free(content);
-        std.c.free(@ptrCast(bytecode.ptr));
+        rt.allocator.free(bytecode);
         return luau.errorRaise(L);
     }
 
     if (luau.typeOf(L, -1) == .nil) {
         rt.popLoading();
         rt.current_requirer = prev_requirer;
-        rt.allocator.free(content);
-        std.c.free(@ptrCast(bytecode.ptr));
+        rt.allocator.free(bytecode);
         return raise(L, "require: module '{s}' must return a value", .{chosen});
     }
 
@@ -133,8 +120,7 @@ fn requireFn(L: *luau.State) callconv(.c) c_int {
 
     rt.popLoading();
     rt.current_requirer = prev_requirer;
-    rt.allocator.free(content);
-    std.c.free(@ptrCast(bytecode.ptr));
+    rt.allocator.free(bytecode);
     return 1;
 }
 
@@ -190,7 +176,7 @@ fn findFile(io: Io, base: []const u8, ext: []const u8, out: []u8) ?[:0]const u8 
     out[base.len + ext.len] = 0;
     const path = out[0 .. base.len + ext.len :0];
 
-    const stat = Dir.statFile(.cwd(), io, path, .{}) catch return null;
+    const stat = Dir.statFile(.cwd(), io, path, .{ .follow_symlinks = false }) catch return null;
     if (stat.kind != .file) return null;
     return path;
 }

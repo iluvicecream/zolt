@@ -3,6 +3,20 @@ const std = @import("std");
 pub const State = opaque {};
 
 const LUA_GLOBALSINDEX: c_int = -10002;
+const LUA_REGISTRYINDEX: c_int = -10000;
+
+const GCOp = enum(c_int) {
+    stop = 0,
+    restart = 1,
+    collect = 2,
+    count = 3,
+    count_b = 4,
+    is_running = 5,
+    step = 6,
+    set_goal = 7,
+    set_step_mul = 8,
+    set_step_size = 9,
+};
 
 pub const CFunction = *const fn (L: *State) callconv(.c) c_int;
 
@@ -19,6 +33,10 @@ extern fn lua_pushvalue(L: *State, idx: c_int) void;
 extern fn lua_pushcclosurek(L: *State, f: CFunction, debugname: ?[*:0]const u8, nup: c_int, cont: ?*anyopaque) void;
 extern fn lua_pushlightuserdatatagged(L: *State, p: ?*anyopaque, tag: c_int) void;
 extern fn lua_pushlstring(L: *State, s: [*]const u8, len: usize) void;
+extern fn lua_pushnil(L: *State) void;
+extern fn lua_next(L: *State, idx: c_int) c_int;
+extern fn lua_rawget(L: *State, idx: c_int) void;
+extern fn lua_rawset(L: *State, idx: c_int) void;
 extern fn lua_remove(L: *State, idx: c_int) void;
 extern fn lua_replace(L: *State, idx: c_int) void;
 extern fn lua_tolstring(L: *State, idx: c_int, len: ?*usize) ?[*:0]const u8;
@@ -27,6 +45,7 @@ extern fn lua_toboolean(L: *State, idx: c_int) c_int;
 extern fn lua_touserdata(L: *State, idx: c_int) ?*anyopaque;
 extern fn lua_pcall(L: *State, nargs: c_int, nresults: c_int, errfunc: c_int) c_int;
 extern fn lua_error(L: *State) c_int;
+extern fn lua_gc(L: *State, what: c_int, data: c_int) c_int;
 extern fn luau_load(L: *State, chunkname: [*:0]const u8, data: [*]const u8, size: usize, env: c_int) c_int;
 extern fn luau_compile(source: [*]const u8, size: usize, options: ?*anyopaque, outsize: *usize) ?[*]u8;
 extern fn lua_type(L: *State, index: c_int) c_int;
@@ -77,8 +96,6 @@ pub fn compile(source: []const u8, out_size: *usize) ?[]u8 {
     return bytecode[0..out_size.*];
 }
 
-// luau_compile encodes compile errors into the returned blob; a leading 0
-// marks the rest of the blob as the error message. luau_load can decode it.
 pub fn isCompileError(bytecode: []const u8) bool {
     return bytecode.len > 0 and bytecode[0] == 0;
 }
@@ -101,8 +118,6 @@ pub fn pcall(L: *State, nargs: c_int, nresults: c_int, errfunc: c_int) RunError!
         return error.RuntimeError;
 }
 
-// Pushes debug.traceback as a message handler for the next pcall, so runtime
-// errors carry a stack traceback computed while the call frames are alive.
 pub fn pushTracebackHandler(L: *State) void {
     _ = lua_getfield(L, LUA_GLOBALSINDEX, "debug");
     _ = lua_getfield(L, -1, "traceback");
@@ -201,14 +216,34 @@ pub fn errorRaise(L: *State) c_int {
     return lua_error(L);
 }
 
+var pristine_globals_key: u8 = 0;
+
+pub fn savePristineGlobals(L: *State) void {
+    lua_pushlightuserdatatagged(L, &pristine_globals_key, 0);
+    lua_pushvalue(L, LUA_GLOBALSINDEX);
+    lua_rawset(L, LUA_REGISTRYINDEX);
+}
+
 pub fn pushSandboxEnv(L: *State) void {
-    lua_createtable(L, 0, 4);
-    lua_createtable(L, 0, 1);
-    _ = lua_getfield(L, LUA_GLOBALSINDEX, "_G");
-    lua_setfield(L, -2, "__index");
-    _ = lua_setmetatable(L, -2);
-    lua_pushvalue(L, -1);
-    lua_setfield(L, -2, "_G");
+    lua_pushlightuserdatatagged(L, &pristine_globals_key, 0); // key
+    lua_rawget(L, LUA_REGISTRYINDEX); // [pristine]
+    lua_createtable(L, 0, 32); // [pristine, env]
+    lua_pushnil(L); // [pristine, env, nil]
+    while (lua_next(L, -3) != 0) { // [pristine, env, key, value]
+        lua_pushvalue(L, -2); // [pristine, env, key, value, key]
+        lua_pushvalue(L, -2); // [pristine, env, key, value, key, value]
+        lua_rawset(L, -5); // env[key] = value; [pristine, env, key, value]
+        lua_settop(L, -2); // drop value, keep key; [pristine, env, key]
+    } // [pristine, env]
+    lua_pushvalue(L, -1); // [pristine, env, env]
+    lua_setfield(L, -2, "_G"); // env._G = env; [pristine, env]
+    lua_pushvalue(L, -1); // [pristine, env, env]
+    lua_replace(L, LUA_GLOBALSINDEX); // L->gt = env; [pristine, env]
+    lua_remove(L, 1); // [env]
+}
+
+pub fn gcStep(L: *State, kb: c_int) void {
+    _ = lua_gc(L, @intFromEnum(GCOp.step), kb);
 }
 
 pub fn getFieldNumber(L: *State, index: c_int, key: [:0]const u8) ?f64 {
