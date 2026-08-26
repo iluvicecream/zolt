@@ -1,8 +1,8 @@
 # zolt
 
-A minimal HTTP application server written in Zig with Luau as the scripting
-language. Routes are plain `.lua` files: a request for `/hello.lua` reads
-`./hello.lua`, executes it, and serves its output. Think "PHP but Lua".
+A minimal application server written in Zig with Luau as the scripting
+language. Routes are plain `.luau` files: a request for `/hello.luau` reads
+`./hello.luau`, executes it, and serves its output. Think "PHP but Lua".
 
 ## Requirements
 
@@ -17,99 +17,28 @@ zig build          # build ./zig-out/bin/zoltd
 zig build run      # build and run
 ```
 
-The server reads its configuration from the first command-line argument (a
-relative or absolute path to a config file), falling back to `config.luau` in
+The server reads its configuration from the first command-line argument , falling back to `config.luau` in
 the working directory when no argument is given:
 
 ```sh
-./zig-out/bin/zoltd config.luau
-./zig-out/bin/zoltd ~/data/config-dev.luau
+./zoltd {path_to_config}
 ```
 
-The server binds to the host configured in the config file (default
-`127.0.0.1:8081`), then serves requests until stopped.
+## Get Started
 
-## Get started
-
-Learn how build zolt app in /zolt-doc
+Learn how to use zolt to build simple web app at /zolt-doc
 
 ## Configuration
 
-`config.lua` in the working directory is loaded once at startup and must
-return a table with a `host` field:
+loaded once at startup and must return a table with a `host` field:
 
 ```lua
 return {
     host = "127.0.0.1:8081",
-    -- isShowRuntimeError = true, -- surface script errors in 500 responses
-    -- maxConnections = 64,       -- concurrent connections (each gets its own Luau VM)
+    -- isShowRuntimeError = true, -- display trace for error in response or not
+    -- maxConnections = 64,       -- concurrent connections
 }
 ```
-
-Route scripts that fail to compile or run always produce a `500` response.
-When `isShowRuntimeError` is `true`, the body contains the error message
-(including the file/line for compile errors and a stack traceback for runtime
-errors); when `false`, the body is a generic `Internal Server Error`. It
-defaults to `false`.
-
-`maxConnections` caps how many clients are handled at once (default `64`).
-Every accepted connection runs on its own thread with its own fresh Luau VM,
-so concurrent users are processed in parallel and never share VM state. Once
-the limit is reached, new connections wait in the accept queue until a slot
-frees up.
-
-## Modules with `require`
-
-Route scripts can load other `.lua`/`.luau` files with `require`:
-
-```luau
-local math = require("./math")       -- relative to the requiring file
-local shared = require("../lib/util")
-```
-
-- Paths resolve relative to the requiring file (not the request URL) and may
-  use `./` and `../` as long as they stay inside the working directory.
-  Symlinks and non-regular files are rejected, so a module can never escape
-  the working directory.
-- When the spec has no extension, `require` tries the exact name first, then
-  appends `.luau` and `.lua`.
-- A module must return its exports: `return { ... }` (or a function).
-- Modules are cached per request: requiring the same file twice in one request
-  returns the same value, and modules re-execute on every request, so they do
-  not share state across requests.
-- Cyclic requires are detected and reported as an error.
-
-## Responses
-
-The Lua runtime drives the HTTP response directly. `echo` writes the body,
-`status` sets the status code, and `header` adds a response header:
-
-```luau
-status(404)
-header("content-type", "text/plain")
-echo("page not found")
-```
-
-- `status(code)` accepts any standard HTTP status code (100-599).
-- `header(name, value)` adds a header; the default `content-type:
-  text/html; charset=utf-8` is only applied when the script did not set one.
-- If the script echoes a body but never calls `status`, the response is `200
-  OK`.
-- Errors raised by `status`/`header` (bad code, header table full) surface as
-  `500` responses when `isShowRuntimeError` is enabled.
-
-## Limits
-
-- Handler source: 16 KB per file (`max_content_size`)
-- Module source: 16 KB per file (`max_module_size`)
-- response body: 16 KB per request
-- up to 8 response headers per request
-- HTTP request headers must fit in the 4 KB read buffer
-- Each connection runs on its own thread with its own Luau VM (`maxConnections`
-  concurrent connections by default)
-- Each connection serves multiple keep-alive requests
-- Compiled scripts are cached in a shared, mtime-checked cache (up to 256
-  files, LRU eviction); file changes are picked up within about a second
 
 ## Project layout
 
