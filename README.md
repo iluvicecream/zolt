@@ -32,6 +32,7 @@ return a table with a `host` field:
 return {
     host = "127.0.0.1:8081",
     -- isShowRuntimeError = true, -- surface script errors in 500 responses
+    -- maxConnections = 64,       -- concurrent connections (each gets its own Luau VM)
 }
 ```
 
@@ -39,6 +40,12 @@ When `isShowRuntimeError` is `true`, route scripts that fail to compile or run
 produce a `500` response whose body contains the error message (including the
 file/line for compile errors and a stack traceback for runtime errors) instead
 of just closing the connection. It defaults to `false`.
+
+`maxConnections` caps how many clients are handled at once (default `64`).
+Every accepted connection runs on its own thread with its own fresh Luau VM,
+so concurrent users are processed in parallel and never share VM state. Once
+the limit is reached, new connections wait in the accept queue until a slot
+frees up.
 
 ## Modules with `require`
 
@@ -65,14 +72,15 @@ local shared = require("../lib/util")
 - Module source: 16 KB per file (`max_module_size`)
 - response body: 16 KB per request
 - HTTP request headers must fit in the 4 KB read buffer
-- The server is single-threaded: connections are handled one at a time,
-  though each connection serves multiple keep-alive requests
+- Each connection runs on its own thread with its own Luau VM (`maxConnections`
+  concurrent connections by default)
+- Each connection serves multiple keep-alive requests
 
 ## Project layout
 
 ```text
 src/
-├── main.zig                 # entry point: config, route handler, server setup
+├── main.zig                 # entry point: config, per-connection route handler factory
 ├── root.zig                 # package root exposing zolt modules
 ├── route.zig                # route resolution, script cache, response wiring
 ├── config/config.zig        # config.lua loading
@@ -82,6 +90,6 @@ src/
 │   └── packages/
 │       ├── echo.zig         # `echo` host function package
 │       └── require.zig      # `require` module loader package
-├── network/http_session.zig # accept loop, keep-alive connection handling
+├── network/http_session.zig # accept loop, thread-per-connection dispatch
 └── protocol/http_rsp.zig    # response model
 ```

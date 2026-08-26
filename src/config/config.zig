@@ -8,8 +8,10 @@ const Dir = Io.Dir;
 pub const Config = struct {
     host: []const u8,
     is_show_runtime_error: bool,
+    max_connections: usize,
 
     pub const max_content_size = 16 * 1024;
+    pub const default_max_connections = 64;
 
     // Load config.luau run it
     // and extract returned table for host value
@@ -48,11 +50,15 @@ pub const Config = struct {
 
         const is_show_runtime_error = luau.getFieldBoolean(L, -1, "isShowRuntimeError") orelse false;
 
+        const raw_max_connections = luau.getFieldNumber(L, -1, "maxConnections") orelse default_max_connections;
+        const max_connections: usize = @intFromFloat(@min(@max(raw_max_connections, 1), 65536));
+
         std.log.info("config.lua loaded", .{});
 
         return .{
             .host = host_owned,
             .is_show_runtime_error = is_show_runtime_error,
+            .max_connections = max_connections,
         };
     }
 
