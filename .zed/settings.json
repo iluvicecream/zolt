@@ -1,0 +1,16 @@
+{
+  "lsp": {
+    "luau-lsp": {
+      "settings": {
+        "luau-lsp": {
+          "sourcemap": {
+            "enabled": true,
+          },
+          "types": {
+            "definitionFiles": ["globalTypes.d.luau"],
+          },
+        },
+      },
+    },
+  },
+}
