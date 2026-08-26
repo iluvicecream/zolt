@@ -19,6 +19,10 @@ zig build run      # build and run
 
 The server binds to the host configured in `config.lua` (default `127.0.0.1:8081`), then serves requests until stopped.
 
+## Get started
+
+Learn how build zolt app in /zolt-doc
+
 ## Configuration
 
 `config.lua` in the working directory is loaded once at startup and must
@@ -35,28 +39,6 @@ When `isShowRuntimeError` is `true`, route scripts that fail to compile or run
 produce a `500` response whose body contains the error message (including the
 file/line for compile errors and a stack traceback for runtime errors) instead
 of just closing the connection. It defaults to `false`.
-
-## Writing handlers
-
-Handlers are Luau scripts in the working directory. Build the response body
-with `echo`:
-
-```lua
-local name = "zolt"
-echo("The value of name is: ", name)
-```
-
-`echo` appends into the runtime's shared response buffer for the request.
-Scripts run in Luau's typed mode, so Luau's type annotations work too.
-
-## Runtime API
-
-The host exposes a small runtime to handler scripts, registered into each
-request's sandbox environment:
-
-- `echo(...)` — appends each stringifiable argument to the response body.
-  Numbers are converted to strings; values that cannot be stringified are
-  skipped. Returns nothing.
 
 ## Limits
 

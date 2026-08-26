@@ -1,1 +1,1 @@
-declare function echo(content: string): ()
+declare function echo(content: any): ()

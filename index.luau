@@ -1,3 +1,5 @@
--- test script
-echo("<h1>Hi!</h1>");
-echo("<p>this is a so cool!</p>");
+local txt1 = "Learn Lua";
+local txt2 = "with Zolt";
+
+echo("<h2>" .. txt1 .. "</h2>");
+echo("<p>Build web app in lua " .. txt2 .. "</p>");

@@ -4,7 +4,7 @@
       "settings": {
         "luau-lsp": {
           "sourcemap": {
-            "enabled": true,
+            "enabled": false,
           },
           "types": {
             "definitionFiles": ["globalTypes.d.luau"],
