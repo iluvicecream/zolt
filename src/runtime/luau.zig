@@ -18,12 +18,15 @@ extern fn lua_setfield(L: *State, idx: c_int, k: [*:0]const u8) void;
 extern fn lua_pushvalue(L: *State, idx: c_int) void;
 extern fn lua_pushcclosurek(L: *State, f: CFunction, debugname: ?[*:0]const u8, nup: c_int, cont: ?*anyopaque) void;
 extern fn lua_pushlightuserdatatagged(L: *State, p: ?*anyopaque, tag: c_int) void;
+extern fn lua_pushlstring(L: *State, s: [*]const u8, len: usize) void;
 extern fn lua_remove(L: *State, idx: c_int) void;
+extern fn lua_replace(L: *State, idx: c_int) void;
 extern fn lua_tolstring(L: *State, idx: c_int, len: ?*usize) ?[*:0]const u8;
 extern fn lua_tonumberx(L: *State, idx: c_int, isnum: ?*c_int) f64;
 extern fn lua_toboolean(L: *State, idx: c_int) c_int;
 extern fn lua_touserdata(L: *State, idx: c_int) ?*anyopaque;
 extern fn lua_pcall(L: *State, nargs: c_int, nresults: c_int, errfunc: c_int) c_int;
+extern fn lua_error(L: *State) c_int;
 extern fn luau_load(L: *State, chunkname: [*:0]const u8, data: [*]const u8, size: usize, env: c_int) c_int;
 extern fn luau_compile(source: [*]const u8, size: usize, options: ?*anyopaque, outsize: *usize) ?[*]u8;
 extern fn lua_type(L: *State, index: c_int) c_int;
@@ -160,6 +163,42 @@ pub fn registerFunction(L: *State, table_index: c_int, name: [:0]const u8, ctx: 
 
 pub fn upvaluePtr(L: *State, n: c_int) ?*anyopaque {
     return lua_touserdata(L, LUA_GLOBALSINDEX - n);
+}
+
+pub fn upvalueIndex(n: c_int) c_int {
+    return LUA_GLOBALSINDEX - n;
+}
+
+pub fn pushLightUserdata(L: *State, p: ?*anyopaque) void {
+    lua_pushlightuserdatatagged(L, p, 0);
+}
+
+pub fn pushValue(L: *State, idx: c_int) void {
+    lua_pushvalue(L, idx);
+}
+
+pub fn createTable(L: *State, narr: c_int, nrec: c_int) void {
+    lua_createtable(L, narr, nrec);
+}
+
+pub fn pushClosure(L: *State, f: CFunction, debugname: [:0]const u8, nup: c_int) void {
+    lua_pushcclosurek(L, f, debugname.ptr, nup, null);
+}
+
+pub fn setField(L: *State, index: c_int, key: [:0]const u8) void {
+    lua_setfield(L, index, key.ptr);
+}
+
+pub fn replace(L: *State, index: c_int) void {
+    lua_replace(L, index);
+}
+
+pub fn pushLString(L: *State, s: []const u8) void {
+    lua_pushlstring(L, s.ptr, s.len);
+}
+
+pub fn errorRaise(L: *State) c_int {
+    return lua_error(L);
 }
 
 pub fn pushSandboxEnv(L: *State) void {

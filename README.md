@@ -40,9 +40,29 @@ produce a `500` response whose body contains the error message (including the
 file/line for compile errors and a stack traceback for runtime errors) instead
 of just closing the connection. It defaults to `false`.
 
+## Modules with `require`
+
+Route scripts can load other `.lua`/`.luau` files with `require`:
+
+```luau
+local math = require("./math")       -- relative to the requiring file
+local shared = require("../lib/util")
+```
+
+- Paths resolve relative to the requiring file (not the request URL) and may
+  use `./` and `../` as long as they stay inside the working directory.
+- When the spec has no extension, `require` tries the exact name first, then
+  appends `.luau` and `.lua`.
+- A module must return its exports: `return { ... }` (or a function).
+- Modules are cached per request: requiring the same file twice in one request
+  returns the same value, and modules re-execute on every request, so they do
+  not share state across requests.
+- Cyclic requires are detected and reported as an error.
+
 ## Limits
 
 - Handler source: 16 KB per file (`max_content_size`)
+- Module source: 16 KB per file (`max_module_size`)
 - response body: 16 KB per request
 - HTTP request headers must fit in the 4 KB read buffer
 - The server is single-threaded: connections are handled one at a time,
@@ -60,7 +80,8 @@ src/
 │   ├── runtime.zig          # Lua runtime: VM, sandbox environments, script execution
 │   ├── luau.zig             # Luau C API bindings
 │   └── packages/
-│       └── echo.zig         # `echo` host function package
+│       ├── echo.zig         # `echo` host function package
+│       └── require.zig      # `require` module loader package
 ├── network/http_session.zig # accept loop, keep-alive connection handling
 └── protocol/http_rsp.zig    # response model
 ```

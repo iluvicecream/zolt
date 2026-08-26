@@ -1,5 +1,4 @@
-local txt1 = "Learn Lua";
-local txt2 = "with Zolt";
+local mod1 = require("./module");
 
-echo("<h2>" .. txt1 .. "</h2>");
-echo("<p>Build web app in lua " .. txt2 .. "</p>");
+local ret1 = mod1.add(5, 10);
+echo(ret1)

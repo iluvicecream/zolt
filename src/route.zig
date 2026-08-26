@@ -21,7 +21,7 @@ pub const RouteHandler = struct {
     show_runtime_errors: bool,
 
     pub fn init(allocator: std.mem.Allocator, show_runtime_errors: bool) !RouteHandler {
-        const rt = try runtime.Runtime.init();
+        const rt = try runtime.Runtime.init(allocator);
         errdefer rt.deinit();
         return .{
             .allocator = allocator,
@@ -64,7 +64,7 @@ pub const RouteHandler = struct {
             return err;
         };
         if (bytecode) |bc| {
-            self.runScript(target, bc, &http_rsp) catch |err| {
+            self.runScript(io, target, bc, &http_rsp) catch |err| {
                 std.log.err("route script error target={s} err={}", .{ target, err });
                 if (self.show_runtime_errors) {
                     http_rsp.status = .internal_server_error;
@@ -142,14 +142,16 @@ pub const RouteHandler = struct {
         return null;
     }
 
-    fn runScript(self: *RouteHandler, target: []const u8, bytecode: []const u8, rsp: *HttpRsp) !void {
+    fn runScript(self: *RouteHandler, io: Io, target: []const u8, bytecode: []const u8, rsp: *HttpRsp) !void {
         self.rt.beginRequest();
+        self.rt.io = io;
         runtime.packages.echo.register(self.rt.L, &self.rt.response);
+        runtime.packages.require.register(self.rt.L, &self.rt);
 
         var chunk_name_buf: [256]u8 = undefined;
         const chunk_name = chunkName(target, &chunk_name_buf);
 
-        self.rt.run(chunk_name, bytecode) catch |err| {
+        self.rt.run(chunk_name, target, bytecode) catch |err| {
             std.log.err("route lua error err={s} target={s}", .{ self.rt.errorMessage(), target });
             return err;
         };
