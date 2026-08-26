@@ -27,32 +27,27 @@ return a table with a `host` field:
 ```lua
 return {
     host = "127.0.0.1:8081",
+    -- isShowRuntimeError = true, -- surface script errors in 500 responses
 }
 ```
+
+When `isShowRuntimeError` is `true`, route scripts that fail to compile or run
+produce a `500` response whose body contains the error message (including the
+file/line for compile errors and a stack traceback for runtime errors) instead
+of just closing the connection. It defaults to `false`.
 
 ## Writing handlers
 
-Handlers are Luau scripts in the working directory. Two output styles are
-supported.
-
-Return a table with a `response` field:
-
-```lua
-return {
-    response = "hello from lua!",
-}
-```
-
-Or build the body with `echo` — the echo style may be all the script does:
+Handlers are Luau scripts in the working directory. Build the response body
+with `echo`:
 
 ```lua
 local name = "zolt"
 echo("The value of name is: ", name)
 ```
 
-If a script calls `echo`, its output is the response body; otherwise the
-returned table's `response` field is used. Scripts run in Luau's typed mode,
-so Luau's type annotations work too.
+`echo` appends into the runtime's shared response buffer for the request.
+Scripts run in Luau's typed mode, so Luau's type annotations work too.
 
 ## Runtime API
 
@@ -66,7 +61,7 @@ request's sandbox environment:
 ## Limits
 
 - Handler source: 16 KB per file (`max_content_size`)
-- `echo` output: 16 KB per request
+- response body: 16 KB per request
 - HTTP request headers must fit in the 4 KB read buffer
 - The server is single-threaded: connections are handled one at a time,
   though each connection serves multiple keep-alive requests
@@ -75,12 +70,15 @@ request's sandbox environment:
 
 ```text
 src/
-├── main.zig               # entry point: config, route handler, server setup
-├── root.zig               # package root exposing zolt modules
-├── route.zig              # route resolution, sandbox environments, runtime API
-├── config/config.zig      # config.lua loading
-├── luau/luau.zig          # Luau C API bindings
+├── main.zig                 # entry point: config, route handler, server setup
+├── root.zig                 # package root exposing zolt modules
+├── route.zig                # route resolution, script cache, response wiring
+├── config/config.zig        # config.lua loading
+├── runtime/
+│   ├── runtime.zig          # Lua runtime: VM, sandbox environments, script execution
+│   ├── luau.zig             # Luau C API bindings
+│   └── packages/
+│       └── echo.zig         # `echo` host function package
 ├── network/http_session.zig # accept loop, keep-alive connection handling
-└── protocol/http_rsp.zig  # response model
+└── protocol/http_rsp.zig    # response model
 ```
-

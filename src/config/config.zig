@@ -7,11 +7,14 @@ const Dir = Io.Dir;
 
 pub const Config = struct {
     host: []const u8,
+    is_show_runtime_error: bool,
 
     pub const max_content_size = 16 * 1024;
 
+    // Load config.luau run it
+    // and extract returned table for host value
     pub fn load(io: Io, allocator: std.mem.Allocator) !Config {
-        const content = try Dir.readFileAlloc(.cwd(), io, "config.lua", allocator, .limited(max_content_size));
+        const content = try Dir.readFileAlloc(.cwd(), io, "config.luau", allocator, .limited(max_content_size));
         defer allocator.free(content);
 
         const L = luau.newState() orelse {
@@ -24,7 +27,7 @@ pub const Config = struct {
             std.log.err("config lua compile error err={s}", .{luau.errorMessage(L)});
             return error.ConfigEvalFailed;
         };
-        luau.pcall(L, 0, 1) catch {
+        luau.pcall(L, 0, 1, 0) catch {
             std.log.err("config lua runtime error err={s}", .{luau.errorMessage(L)});
             return error.ConfigEvalFailed;
         };
@@ -43,10 +46,13 @@ pub const Config = struct {
         const host_owned = try allocator.dupe(u8, host);
         errdefer allocator.free(host_owned);
 
+        const is_show_runtime_error = luau.getFieldBoolean(L, -1, "isShowRuntimeError") orelse false;
+
         std.log.info("config.lua loaded", .{});
 
         return .{
             .host = host_owned,
+            .is_show_runtime_error = is_show_runtime_error,
         };
     }
 

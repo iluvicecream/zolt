@@ -18,8 +18,10 @@ extern fn lua_setfield(L: *State, idx: c_int, k: [*:0]const u8) void;
 extern fn lua_pushvalue(L: *State, idx: c_int) void;
 extern fn lua_pushcclosurek(L: *State, f: CFunction, debugname: ?[*:0]const u8, nup: c_int, cont: ?*anyopaque) void;
 extern fn lua_pushlightuserdatatagged(L: *State, p: ?*anyopaque, tag: c_int) void;
+extern fn lua_remove(L: *State, idx: c_int) void;
 extern fn lua_tolstring(L: *State, idx: c_int, len: ?*usize) ?[*:0]const u8;
 extern fn lua_tonumberx(L: *State, idx: c_int, isnum: ?*c_int) f64;
+extern fn lua_toboolean(L: *State, idx: c_int) c_int;
 extern fn lua_touserdata(L: *State, idx: c_int) ?*anyopaque;
 extern fn lua_pcall(L: *State, nargs: c_int, nresults: c_int, errfunc: c_int) c_int;
 extern fn luau_load(L: *State, chunkname: [*:0]const u8, data: [*]const u8, size: usize, env: c_int) c_int;
@@ -69,11 +71,13 @@ pub fn version(L: *State) []const u8 {
 
 pub fn compile(source: []const u8, out_size: *usize) ?[]u8 {
     const bytecode = luau_compile(source.ptr, source.len, null, out_size) orelse return null;
-    if (bytecode[0] == 0) {
-        std.c.free(@ptrCast(bytecode));
-        return null;
-    }
     return bytecode[0..out_size.*];
+}
+
+// luau_compile encodes compile errors into the returned blob; a leading 0
+// marks the rest of the blob as the error message. luau_load can decode it.
+pub fn isCompileError(bytecode: []const u8) bool {
+    return bytecode.len > 0 and bytecode[0] == 0;
 }
 
 pub fn loadBytecode(L: *State, chunk_name: [:0]const u8, bytecode: []const u8, env: c_int) RunError!void {
@@ -89,14 +93,22 @@ pub fn loadString(L: *State, chunk_name: [:0]const u8, source: []const u8) RunEr
     try loadBytecode(L, chunk_name, bytecode, 0);
 }
 
-pub fn pcall(L: *State, nargs: c_int, nresults: c_int) RunError!void {
-    if (lua_pcall(L, nargs, nresults, 0) != 0)
+pub fn pcall(L: *State, nargs: c_int, nresults: c_int, errfunc: c_int) RunError!void {
+    if (lua_pcall(L, nargs, nresults, errfunc) != 0)
         return error.RuntimeError;
+}
+
+// Pushes debug.traceback as a message handler for the next pcall, so runtime
+// errors carry a stack traceback computed while the call frames are alive.
+pub fn pushTracebackHandler(L: *State) void {
+    _ = lua_getfield(L, LUA_GLOBALSINDEX, "debug");
+    _ = lua_getfield(L, -1, "traceback");
+    lua_remove(L, -2); // drop the debug table, keep the handler
 }
 
 pub fn runString(L: *State, chunk_name: [:0]const u8, source: []const u8) RunError!void {
     try loadString(L, chunk_name, source);
-    try pcall(L, 0, 0);
+    try pcall(L, 0, 0, 0);
 }
 
 pub fn tonumber(L: *State, index: c_int) ?f64 {
@@ -151,8 +163,8 @@ pub fn upvaluePtr(L: *State, n: c_int) ?*anyopaque {
 }
 
 pub fn pushSandboxEnv(L: *State) void {
-    lua_createtable(L, 0, 4); // env
-    lua_createtable(L, 0, 1); // metatable
+    lua_createtable(L, 0, 4);
+    lua_createtable(L, 0, 1);
     _ = lua_getfield(L, LUA_GLOBALSINDEX, "_G");
     lua_setfield(L, -2, "__index");
     _ = lua_setmetatable(L, -2);
@@ -166,4 +178,11 @@ pub fn getFieldNumber(L: *State, index: c_int, key: [:0]const u8) ?f64 {
     var isnum: c_int = 0;
     const n = lua_tonumberx(L, -1, &isnum);
     return if (isnum != 0) n else null;
+}
+
+pub fn getFieldBoolean(L: *State, index: c_int, key: [:0]const u8) ?bool {
+    _ = lua_getfield(L, index, key.ptr);
+    defer lua_settop(L, index - 1);
+    if (typeOf(L, -1) != .boolean) return null;
+    return lua_toboolean(L, -1) != 0;
 }

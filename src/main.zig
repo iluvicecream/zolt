@@ -30,7 +30,7 @@ fn httpServerSetup(io: Io, config: zolt.Config, allocator: std.mem.Allocator) !v
         return err;
     };
 
-    var route_handler = RouteHandler.init(allocator) catch |err| {
+    var route_handler = RouteHandler.init(allocator, config.is_show_runtime_error) catch |err| {
         std.log.err("failed to init route handler err={}", .{err});
         return err;
     };

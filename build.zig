@@ -18,7 +18,7 @@ pub fn build(b: *std.Build) void {
     const luau_lib = buildLuau(b, luau_dep, target, optimize);
 
     const luau_mod = b.addModule("zolt_luau", .{
-        .root_source_file = b.path("src/luau/luau.zig"),
+        .root_source_file = b.path("src/runtime/luau.zig"),
         .target = target,
         .optimize = optimize,
         .link_libcpp = true,
