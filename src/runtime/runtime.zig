@@ -1,12 +1,13 @@
 const std = @import("std");
 const luau = @import("zolt_luau");
-const Response = @import("response.zig").Response;
+const HttpRsp = @import("../protocol/http_rsp.zig").HttpRsp;
 
 const Io = std.Io;
 
 pub const packages = struct {
     pub const echo = @import("packages/echo.zig");
     pub const require = @import("packages/require.zig");
+    pub const response = @import("packages/response.zig");
 };
 
 pub const State = luau.State;
@@ -22,7 +23,7 @@ pub fn isCompileError(bytecode: []const u8) bool {
 
 pub const Runtime = struct {
     L: *luau.State,
-    response: Response = .{},
+    rsp: ?*HttpRsp = null,
     allocator: std.mem.Allocator,
     io: Io,
     current_requirer: ?[]const u8 = null,
@@ -46,13 +47,15 @@ pub const Runtime = struct {
         self.* = undefined;
     }
 
-    pub fn beginRequest(self: *Runtime) void {
+    pub fn beginRequest(self: *Runtime, rsp: *HttpRsp) void {
+        self.rsp = rsp;
+        rsp.reset();
         luau.pushSandboxEnv(self.L);
-        self.response.reset();
     }
 
     pub fn endRequest(self: *Runtime) void {
         luau.settop(self.L, 0);
+        self.rsp = null;
     }
 
     pub fn register(self: *Runtime, name: [:0]const u8, ctx: ?*anyopaque, f: CFunction) void {

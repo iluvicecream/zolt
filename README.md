@@ -66,11 +66,31 @@ local shared = require("../lib/util")
   not share state across requests.
 - Cyclic requires are detected and reported as an error.
 
+## Responses
+
+The Lua runtime drives the HTTP response directly. `echo` writes the body,
+`status` sets the status code, and `header` adds a response header:
+
+```luau
+status(404)
+header("content-type", "text/plain")
+echo("page not found")
+```
+
+- `status(code)` accepts any standard HTTP status code (100-599).
+- `header(name, value)` adds a header; the default `content-type:
+  text/html; charset=utf-8` is only applied when the script did not set one.
+- If the script echoes a body but never calls `status`, the response is `200
+  OK`.
+- Errors raised by `status`/`header` (bad code, header table full) surface as
+  `500` responses when `isShowRuntimeError` is enabled.
+
 ## Limits
 
 - Handler source: 16 KB per file (`max_content_size`)
 - Module source: 16 KB per file (`max_module_size`)
 - response body: 16 KB per request
+- up to 8 response headers per request
 - HTTP request headers must fit in the 4 KB read buffer
 - Each connection runs on its own thread with its own Luau VM (`maxConnections`
   concurrent connections by default)
@@ -89,6 +109,7 @@ src/
 │   ├── luau.zig             # Luau C API bindings
 │   └── packages/
 │       ├── echo.zig         # `echo` host function package
+│       ├── response.zig     # `status`/`header` response control package
 │       └── require.zig      # `require` module loader package
 ├── network/http_session.zig # accept loop, thread-per-connection dispatch
 └── protocol/http_rsp.zig    # response model

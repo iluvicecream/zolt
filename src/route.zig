@@ -55,11 +55,11 @@ pub const RouteHandler = struct {
             return respondNotFound(req);
         };
 
-        var http_rsp: HttpRsp = .{ .content = "", .status = .internal_server_error };
+        var http_rsp: HttpRsp = .{};
 
         const bytecode = self.getBytecode(io, target, &http_rsp) catch |err| {
             std.log.err("route script error target={s} err={}", .{ target, err });
-            if (self.show_runtime_errors and http_rsp.content.len > 0)
+            if (self.show_runtime_errors and http_rsp.body_used)
                 return req.respond(http_rsp.toContent(), http_rsp.toRespondOptions());
             return err;
         };
@@ -67,9 +67,9 @@ pub const RouteHandler = struct {
             self.runScript(io, target, bc, &http_rsp) catch |err| {
                 std.log.err("route script error target={s} err={}", .{ target, err });
                 if (self.show_runtime_errors) {
-                    http_rsp.status = .internal_server_error;
-                    http_rsp.content = self.rt.errorMessage();
-                    http_rsp.extra_headers = &.{.{ .name = "content-type", .value = "text/plain; charset=utf-8" }};
+                    http_rsp.setStatus(.internal_server_error, null);
+                    http_rsp.append(self.rt.errorMessage());
+                    _ = http_rsp.setHeader("content-type", "text/plain; charset=utf-8");
                     return req.respond(http_rsp.toContent(), http_rsp.toRespondOptions());
                 }
                 return err;
@@ -108,9 +108,9 @@ pub const RouteHandler = struct {
             const compile_err = self.rt.compileErrorMessage(chunkName(path, &chunk_name_buf), bytecode);
             std.log.err("route lua compile error target={s} err={s}", .{ path, compile_err });
             if (self.show_runtime_errors) {
-                rsp.status = .internal_server_error;
-                rsp.content = compile_err;
-                rsp.extra_headers = &.{.{ .name = "content-type", .value = "text/plain; charset=utf-8" }};
+                rsp.setStatus(.internal_server_error, null);
+                rsp.append(compile_err);
+                _ = rsp.setHeader("content-type", "text/plain; charset=utf-8");
             }
             return error.RouteCompileFailed;
         }
@@ -143,10 +143,11 @@ pub const RouteHandler = struct {
     }
 
     fn runScript(self: *RouteHandler, io: Io, target: []const u8, bytecode: []const u8, rsp: *HttpRsp) !void {
-        self.rt.beginRequest();
+        self.rt.beginRequest(rsp);
         self.rt.io = io;
-        runtime.packages.echo.register(self.rt.L, &self.rt.response);
+        runtime.packages.echo.register(self.rt.L, rsp);
         runtime.packages.require.register(self.rt.L, &self.rt);
+        runtime.packages.response.register(self.rt.L, rsp);
 
         var chunk_name_buf: [256]u8 = undefined;
         const chunk_name = chunkName(target, &chunk_name_buf);
@@ -156,18 +157,15 @@ pub const RouteHandler = struct {
             return err;
         };
 
-        if (self.rt.response.used) {
-            if (self.rt.response.overflowed) {
+        if (rsp.body_used) {
+            if (rsp.body_overflowed) {
                 std.log.err("route lua output too large target={s}", .{target});
                 return error.RouteScriptOutputTooLarge;
             }
-            rsp.content = self.rt.response.slice();
-            rsp.status = .ok;
-            rsp.extra_headers = &.{.{ .name = "content-type", .value = "text/html; charset=utf-8" }};
+            if (!rsp.hasHeader("content-type"))
+                _ = rsp.setHeader("content-type", "text/html; charset=utf-8");
             return;
         }
-
-        rsp.status = .ok;
     }
 };
 
@@ -189,10 +187,9 @@ fn resolveTarget(target: []const u8) ?[]const u8 {
 }
 
 fn respondNotFound(req: *std.http.Server.Request) !void {
-    const http_rsp: HttpRsp = .{
-        .content = "𐔌՞.‸.՞𐦯 not found",
-        .status = .not_found,
-        .extra_headers = &.{.{ .name = "content-type", .value = "text/plain; charset=utf-8" }},
-    };
+    var http_rsp: HttpRsp = .{};
+    http_rsp.setStatus(.not_found, null);
+    http_rsp.append("𐔌՞.‸.՞𐦯 not found");
+    _ = http_rsp.setHeader("content-type", "text/plain; charset=utf-8");
     try req.respond(http_rsp.toContent(), http_rsp.toRespondOptions());
 }
