@@ -13,10 +13,10 @@ pub const Config = struct {
     pub const max_content_size = 16 * 1024;
     pub const default_max_connections = 64;
 
-    // Load config.luau run it
+    // Load the config file, run it
     // and extract returned table for host value
-    pub fn load(io: Io, allocator: std.mem.Allocator) !Config {
-        const content = try Dir.readFileAlloc(.cwd(), io, "config.luau", allocator, .limited(max_content_size));
+    pub fn load(io: Io, allocator: std.mem.Allocator, path: []const u8) !Config {
+        const content = try Dir.readFileAlloc(.cwd(), io, path, allocator, .limited(max_content_size));
         defer allocator.free(content);
 
         const L = luau.newState() orelse {
@@ -53,7 +53,7 @@ pub const Config = struct {
         const raw_max_connections = luau.getFieldNumber(L, -1, "maxConnections") orelse default_max_connections;
         const max_connections: usize = @intFromFloat(@min(@max(raw_max_connections, 1), 65536));
 
-        std.log.info("config.lua loaded", .{});
+        std.log.info("config loaded from {s}", .{path});
 
         return .{
             .host = host_owned,

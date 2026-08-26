@@ -17,7 +17,17 @@ zig build          # build ./zig-out/bin/zoltd
 zig build run      # build and run
 ```
 
-The server binds to the host configured in `config.lua` (default `127.0.0.1:8081`), then serves requests until stopped.
+The server reads its configuration from the first command-line argument (a
+relative or absolute path to a config file), falling back to `config.luau` in
+the working directory when no argument is given:
+
+```sh
+./zig-out/bin/zoltd config.luau
+./zig-out/bin/zoltd ~/data/config-dev.luau
+```
+
+The server binds to the host configured in the config file (default
+`127.0.0.1:8081`), then serves requests until stopped.
 
 ## Get started
 

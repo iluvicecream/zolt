@@ -9,7 +9,10 @@ const HttpSession = zolt.Network.HttpSession;
 
 pub fn main(init: std.process.Init) !void {
     std.log.info("𐔌՞. .՞𐦯 ⚡︎ ⋆.˚ zoltd", .{});
-    var config = loadConfig(init.io, init.gpa) catch |err| {
+    const config_path = parseConfigPath(init);
+    std.log.info("using config {s}", .{config_path});
+
+    var config = loadConfig(init.io, init.gpa, config_path) catch |err| {
         std.log.err("failed to load config err={}", .{err});
         std.process.exit(10); // INVALID_CONFIG
     };
@@ -21,8 +24,14 @@ pub fn main(init: std.process.Init) !void {
     };
 }
 
-fn loadConfig(io: Io, allocator: std.mem.Allocator) !zolt.Config {
-    return zolt.Config.load(io, allocator);
+fn parseConfigPath(init: std.process.Init) []const u8 {
+    var args = std.process.Args.Iterator.init(init.minimal.args);
+    _ = args.next();
+    return args.next() orelse "config.luau";
+}
+
+fn loadConfig(io: Io, allocator: std.mem.Allocator, path: []const u8) !zolt.Config {
+    return zolt.Config.load(io, allocator, path);
 }
 
 const RouteFactory = struct {
