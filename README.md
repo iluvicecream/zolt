@@ -40,6 +40,20 @@ return {
 }
 ```
 
+## Static files
+
+The working directory is the webroot. Requests for `.lua`/`.luau` targets run
+as routes; every other request serves the file directly from the working
+directory as static content. So `style.css` in the working directory is served
+for `/style.css`, `index.luau` runs for `/`, and `/sub/` maps to
+`sub/index.luau` (which runs if it exists).
+
+Static files are served with a `content-type` guessed from the extension
+(HTML, CSS, JS, JSON, images, fonts, PDF, and more; unknown types fall back to
+`application/octet-stream`), and streamed to the client in chunks — files of
+any size are served without being buffered in memory. Symlinks and non-regular
+files are rejected.
+
 ## Project layout
 
 ```text

@@ -1,6 +1,8 @@
 const std = @import("std");
 
 const Io = std.Io;
+const Dir = Io.Dir;
+const http = std.http;
 const runtime = @import("runtime/runtime.zig");
 const script_cache = @import("script_cache.zig");
 const HttpRsp = @import("protocol/http_rsp.zig").HttpRsp;
@@ -47,6 +49,15 @@ pub const RouteHandler = struct {
         };
 
         var http_rsp: HttpRsp = .{};
+
+        const ext = std.fs.path.extension(target);
+        const is_lua_route = std.mem.eql(u8, ext, ".lua") or std.mem.eql(u8, ext, ".luau");
+
+        if (!is_lua_route) {
+            if (try serveStatic(io, req, target)) return;
+            std.log.warn("file not found target={s}", .{req.head.target});
+            return respondNotFound(req);
+        }
 
         const lookup = self.cache.acquire(io, self.allocator, target, max_content_size) catch |err| {
             std.log.err("route script error target={s} err={}", .{ target, err });
@@ -97,6 +108,48 @@ pub const RouteHandler = struct {
         }
     }
 
+    fn serveStatic(io: Io, req: *std.http.Server.Request, target: []const u8) !bool {
+        const stat = Dir.statFile(.cwd(), io, target, .{ .follow_symlinks = false }) catch |err| switch (err) {
+            error.FileNotFound => return false,
+            else => {
+                std.log.warn("static stat error path={s} err={}", .{ target, err });
+                return false;
+            },
+        };
+        if (stat.kind != .file) return false;
+
+        const file = Dir.openFile(.cwd(), io, target, .{
+            .mode = .read_only,
+            .follow_symlinks = false,
+        }) catch |err| switch (err) {
+            error.FileNotFound, error.IsDir => return false,
+            else => {
+                std.log.warn("static open error path={s} err={}", .{ target, err });
+                return false;
+            },
+        };
+        defer file.close(io);
+
+        var read_buf: [64 * 1024]u8 = undefined;
+        var file_reader = file.reader(io, &read_buf);
+
+        const size = file_reader.getSize() catch stat.size;
+
+        const headers = [_]http.Header{.{ .name = "content-type", .value = mimeType(target) }};
+        var body_buf: [4096]u8 = undefined;
+        var body_writer = try req.respondStreaming(&body_buf, .{
+            .content_length = size,
+            .respond_options = .{ .status = .ok, .extra_headers = &headers },
+        });
+
+        const sent = try body_writer.writer.sendFileAll(&file_reader, .limited(size));
+        if (sent != size) {
+            return error.StaticFileChanged;
+        }
+        try body_writer.end();
+        return true;
+    }
+
     fn runScript(self: *RouteHandler, io: Io, target: []const u8, bytecode: []const u8, rsp: *HttpRsp) !void {
         self.rt.beginRequest(rsp);
         self.rt.io = io;
@@ -134,7 +187,7 @@ fn resolveTarget(target: []const u8, buf: []u8) ?[]const u8 {
     var path = target[1..];
     if (std.mem.indexOfAny(u8, path, "?#")) |i| path = path[0..i];
 
-    if (path.len == 0) return "index.luau";
+    const wants_index = path.len == 0 or path[path.len - 1] == '/';
 
     var pos: usize = 0;
     var it = std.mem.splitScalar(u8, path, '/');
@@ -151,8 +204,55 @@ fn resolveTarget(target: []const u8, buf: []u8) ?[]const u8 {
         pos += seg.len;
     }
 
-    if (pos == 0) return "index.luau";
+    if (wants_index) {
+        const index = "index.luau";
+        if (pos + index.len + 1 > buf.len) return null;
+        if (pos != 0) {
+            buf[pos] = '/';
+            pos += 1;
+        }
+        @memcpy(buf[pos..][0..index.len], index);
+        pos += index.len;
+    }
+
     return buf[0..pos];
+}
+
+fn mimeType(path: []const u8) []const u8 {
+    const ext = std.fs.path.extension(path);
+    const table = [_][2][]const u8{
+        .{ ".html", "text/html; charset=utf-8" },
+        .{ ".htm", "text/html; charset=utf-8" },
+        .{ ".css", "text/css; charset=utf-8" },
+        .{ ".js", "text/javascript; charset=utf-8" },
+        .{ ".mjs", "text/javascript; charset=utf-8" },
+        .{ ".json", "application/json" },
+        .{ ".map", "application/json" },
+        .{ ".txt", "text/plain; charset=utf-8" },
+        .{ ".xml", "application/xml" },
+        .{ ".svg", "image/svg+xml" },
+        .{ ".png", "image/png" },
+        .{ ".jpg", "image/jpeg" },
+        .{ ".jpeg", "image/jpeg" },
+        .{ ".gif", "image/gif" },
+        .{ ".webp", "image/webp" },
+        .{ ".avif", "image/avif" },
+        .{ ".ico", "image/x-icon" },
+        .{ ".woff", "font/woff" },
+        .{ ".woff2", "font/woff2" },
+        .{ ".ttf", "font/ttf" },
+        .{ ".otf", "font/otf" },
+        .{ ".eot", "application/vnd.ms-fontobject" },
+        .{ ".pdf", "application/pdf" },
+        .{ ".wasm", "application/wasm" },
+        .{ ".mp3", "audio/mpeg" },
+        .{ ".mp4", "video/mp4" },
+        .{ ".webm", "video/webm" },
+    };
+    for (table) |entry| {
+        if (std.mem.eql(u8, ext, entry[0])) return entry[1];
+    }
+    return "application/octet-stream";
 }
 
 fn respondNotFound(req: *std.http.Server.Request) !void {
