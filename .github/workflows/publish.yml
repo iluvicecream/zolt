@@ -22,10 +22,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Install Zig
-        uses: mlugg/setup-zig@v2
-        with:
-          version: 0.16.0
+      # Downloaded directly instead of using mlugg/setup-zig: that action
+      # requests Zig 0.16.0 under its old tarball naming scheme
+      # (zig-linux-x86_64-...), which no longer exists. The official name
+      # since 0.15 is zig-x86_64-linux-...
+      - name: Install Zig 0.16.0
+        run: |
+          set -euo pipefail
+          mkdir -p "$HOME/.local/zig"
+          curl -fsSL -o /tmp/zig.tar.xz \
+            https://ziglang.org/download/0.16.0/zig-x86_64-linux-0.16.0.tar.xz
+          tar -xJf /tmp/zig.tar.xz -C "$HOME/.local/zig" --strip-components=1
+          echo "$HOME/.local/zig" >> "$GITHUB_PATH"
+          "$HOME/.local/zig/zig" version
 
       # Windows is intentionally not built: src/main.zig uses
       # std.process.argsAlloc(), which Zig 0.16 rejects on Windows.
