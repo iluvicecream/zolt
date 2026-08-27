@@ -54,6 +54,19 @@ Static files are served with a `content-type` guessed from the extension
 any size are served without being buffered in memory. Symlinks and non-regular
 files are rejected.
 
+Every response identifies how it was produced with a `server` header:
+`zolt-static` for static files, `zolt-runtime` for Lua routes (scripts may
+override it with `header("server", ...)`), and `zolt-engine` for error and
+not-found pages.
+
+## Request
+
+The `request` table exposes the current HTTP request to route scripts:
+
+```luau
+echo(request.path()) -- the URL path without the query string, e.g. "/hello.luau"
+```
+
 ## Project layout
 
 ```text

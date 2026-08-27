@@ -7,6 +7,7 @@ const Io = std.Io;
 
 pub const packages = struct {
     pub const echo = @import("packages/echo.zig");
+    pub const request = @import("packages/request.zig");
     pub const require = @import("packages/require.zig");
     pub const response = @import("packages/response.zig");
 };

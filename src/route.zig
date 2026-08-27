@@ -85,7 +85,7 @@ pub const RouteHandler = struct {
             },
             .ok => |bytecode| {
                 defer self.allocator.free(bytecode);
-                self.runScript(io, target, bytecode, &http_rsp) catch |err| {
+                self.runScript(io, target, pathWithoutQuery(req.head.target), bytecode, &http_rsp) catch |err| {
                     std.log.err("route lua error err={} target={s}", .{ err, target });
                     const detail: ?[]const u8 = switch (err) {
                         error.RouteScriptOutputTooLarge => "route script output exceeds 16 KB",
@@ -103,6 +103,8 @@ pub const RouteHandler = struct {
                         _ = http_rsp.setHeader("content-type", "text/html; charset=utf-8");
                 }
 
+                if (!http_rsp.hasHeader("server"))
+                    _ = http_rsp.setHeader("server", "zolt-runtime");
                 try req.respond(http_rsp.toContent(), http_rsp.toRespondOptions());
             },
         }
@@ -135,7 +137,10 @@ pub const RouteHandler = struct {
 
         const size = file_reader.getSize() catch stat.size;
 
-        const headers = [_]http.Header{.{ .name = "content-type", .value = mimeType(target) }};
+        const headers = [_]http.Header{
+            .{ .name = "content-type", .value = mimeType(target) },
+            .{ .name = "server", .value = "zolt-static" },
+        };
         var body_buf: [4096]u8 = undefined;
         var body_writer = try req.respondStreaming(&body_buf, .{
             .content_length = size,
@@ -150,10 +155,18 @@ pub const RouteHandler = struct {
         return true;
     }
 
-    fn runScript(self: *RouteHandler, io: Io, target: []const u8, bytecode: []const u8, rsp: *HttpRsp) !void {
+    fn runScript(
+        self: *RouteHandler,
+        io: Io,
+        target: []const u8,
+        request_path: []const u8,
+        bytecode: []const u8,
+        rsp: *HttpRsp,
+    ) !void {
         self.rt.beginRequest(rsp);
         self.rt.io = io;
         runtime.packages.echo.register(self.rt.L, rsp);
+        runtime.packages.request.register(self.rt.L, request_path);
         runtime.packages.require.register(self.rt.L, &self.rt);
         runtime.packages.response.register(self.rt.L, rsp);
 
@@ -179,6 +192,11 @@ pub const RouteHandler = struct {
 
 fn chunkName(path: []const u8, buf: *[256]u8) [:0]const u8 {
     return std.fmt.bufPrintZ(buf, "={s}", .{path}) catch "=route.luau";
+}
+
+fn pathWithoutQuery(target: []const u8) []const u8 {
+    if (std.mem.indexOfAny(u8, target, "?#")) |i| return target[0..i];
+    return target;
 }
 
 fn resolveTarget(target: []const u8, buf: []u8) ?[]const u8 {
@@ -260,6 +278,7 @@ fn respondNotFound(req: *std.http.Server.Request) !void {
     http_rsp.setStatus(.not_found, null);
     http_rsp.append("𐔌՞.‸.՞𐦯 not found");
     _ = http_rsp.setHeader("content-type", "text/plain; charset=utf-8");
+    _ = http_rsp.setHeader("server", "zolt-engine");
     try req.respond(http_rsp.toContent(), http_rsp.toRespondOptions());
 }
 
@@ -268,5 +287,6 @@ fn respondServerError(req: *std.http.Server.Request, rsp: *HttpRsp, detail: ?[]c
     rsp.setStatus(.internal_server_error, null);
     rsp.append(detail orelse "Internal Server Error");
     _ = rsp.setHeader("content-type", "text/plain; charset=utf-8");
+    _ = rsp.setHeader("server", "zolt-engine");
     try req.respond(rsp.toContent(), rsp.toRespondOptions());
 }
