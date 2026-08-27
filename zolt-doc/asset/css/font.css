@@ -1,0 +1,23 @@
+@font-face {
+    font-family: "GrugHand";
+    src: url("/asset/font/GrugHand-Book.ttf") format("truetype");
+    font-weight: bold;
+    font-style: normal;
+    font-display: swap; /* Prevents invisible text while loading */
+}
+
+@font-face {
+    font-family: "GrugHand";
+    src: url("/asset/font/GrugHand-Regular.ttf") format("truetype");
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap; /* Prevents invisible text while loading */
+}
+
+@font-face {
+    font-family: "GrugHand";
+    src: url("/asset/font/GrugHand-Light.ttf") format("truetype");
+    font-weight: light;
+    font-style: normal;
+    font-display: swap; /* Prevents invisible text while loading */
+}

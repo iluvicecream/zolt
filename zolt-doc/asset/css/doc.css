@@ -1,0 +1,54 @@
+.content {
+    margin-left: 20px;
+}
+
+.doc-header {
+    font-family: "GrugHand", sans-serif;
+    margin-bottom: 10px;
+}
+
+#doc-content {
+    max-width: 720px;
+}
+
+#doc-content p {
+    font-family: "GrugHand", sans-serif;
+    font-size: 18px;
+    line-height: 1.6;
+    margin: 0px 0 14px 0;
+}
+
+#doc-content h2 {
+    font-family: "GrugHand", sans-serif;
+    font-size: 24px;
+    margin: 26px 0 10px 0;
+}
+
+#doc-content a {
+    color: #4a6fa5;
+}
+
+#doc-content code {
+    font-family:
+        "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+    font-size: 15px;
+    background: #f2f0ea;
+    border-radius: 4px;
+    padding: 2px 5px;
+}
+
+#doc-content pre {
+    background: #f2f0ea;
+    border: 1px solid #e2dfd5;
+    border-radius: 8px;
+    padding: 14px 16px;
+    margin: 0 0 16px 0;
+    overflow-x: auto;
+}
+
+#doc-content pre code {
+    background: none;
+    padding: 0;
+    font-size: 16px;
+    line-height: 1.5;
+}
