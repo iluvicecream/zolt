@@ -4,7 +4,7 @@ function NavLink(name:string,href: string,turbo_frame_id: string,class: string)
     echo("<a href=\"" .. href .. "\" data-turbo-frame=\"" .. turbo_frame_id .. "\" class=\"" .. class .. "\" data-sidebar-target=\"link\" data-action=\"sidebar#activate\" >" .. name .. "</a>");
 end
 
-status(200);
+response.status(200);
 
 render.html_start();
 

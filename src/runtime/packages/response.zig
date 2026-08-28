@@ -5,8 +5,12 @@ const HttpRsp = @import("../../protocol/http_rsp.zig").HttpRsp;
 const http = std.http;
 
 pub fn register(L: *luau.State, rsp: *HttpRsp) void {
+    const env = luau.getTop(L);
+    luau.createTable(L, 0, 2); // env + 1: response table
     luau.registerFunction(L, -1, "status", rsp, luaStatus);
     luau.registerFunction(L, -1, "header", rsp, luaHeader);
+    luau.setField(L, env, "response");
+    luau.settop(L, env);
 }
 
 fn luaStatus(L: *luau.State) callconv(.c) c_int {

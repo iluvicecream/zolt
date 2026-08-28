@@ -32,8 +32,8 @@ render.turbo_frame_rsp_start("doc-content")
 
     echo("<p>the response body is limited to 16 kb. if a route writes more than that, zolt responds with an error instead of serving a truncated page.</p>")
 
-    echo("<p>when the route is done, zolt sends the body as <code>text/html; charset=utf-8</code> unless you set another content type with <code>header()</code>.</p>")
+    echo("<p>when the route is done, zolt sends the body as <code>text/html; charset=utf-8</code> unless you set another content type with <code>response.header()</code>.</p>")
 
-    echo("<p>output is buffered until the route finishes, so you can set the <code>status()</code> or <code>header()</code> after echoing.</p>")
+    echo("<p>output is buffered until the route finishes, so you can set <code>response.status()</code> or <code>response.header()</code> after echoing.</p>")
 
 render.turbo_frame_rsp_end()
