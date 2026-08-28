@@ -26,3 +26,9 @@
     text-decoration: wavy underline;
     text-underline-offset: 5px;
 }
+
+.group-sidebar {
+    font-family: "GrugHand", sans-serif;
+    margin-left: 10px;
+    font-weight: 600;
+}

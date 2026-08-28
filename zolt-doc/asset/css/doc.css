@@ -11,6 +11,10 @@
     max-width: 720px;
 }
 
+#doc-content strong {
+    margin-left: 2px;
+}
+
 #doc-content p {
     font-family: "GrugHand", sans-serif;
     font-size: 18px;

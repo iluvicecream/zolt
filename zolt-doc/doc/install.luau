@@ -4,44 +4,36 @@ render.turbo_frame_rsp_start("doc-content")
 
     render.h1("how to install zolt", "doc-header")
 
-    echo("<p>getting zolt running takes about a minute. the fastest way is to grab a ready-made binary, <s>attention</s> terminal is all you need.</p>")
+    echo("<p>getting zolt running takes about a minute. the fastest way is the install script: it grabs a ready-made binary for your operating system and architecture, puts it on your path, and keeps it up to date. terminal is all you need.</p>")
 
-    echo("<h2>a. prebuilt binary</h2>")
+    echo("<h2>one-liner</h2>")
 
-    echo("<p>download the latest release from <a href=\"https://github.com/iluvicecream/zolt/releases\">GitHub</a>. no build step needed just download it and run <code>./zoltd</code>.</p>")
+    echo("<p>if you have <code>curl</code> (you do), run this:</p>")
 
+    echo("<pre><code>curl -fsSL https://zolt-doc.perr.dev/asset/install-zolt.sh | bash</code></pre>")
 
-    echo("<h2>b. build from source</h2>")
+    echo("<p>that's it. <code>zoltd</code> lands in <code>~/.local/bin</code> and that folder gets added to your path. restart your shell (or run <code>source ~/.zshrc</code> / <code>source ~/.bashrc</code>) and you're ready to go.</p>")
 
-    echo("<p>just why? but well. you will need zig. zolt is built with <a href=\"https://ziglang.org/download/\">Zig</a> 0.16 or newer. On macOS, the easiest way to install Homebrew:</p>")
+    echo("<h2>options</h2>")
 
-    echo("<pre><code>brew install zig</code></pre>")
+    echo("<pre><code>./zolt-doc/asset/install-zolt.sh                 # latest, ~/.local/bin\n./zolt-doc/asset/install-zolt.sh --dir ~/bin    # different install folder\n./zolt-doc/asset/install-zolt.sh --version v0.1.0  # pin a specific release\n./zolt-doc/asset/install-zolt.sh --no-path        # skip editing your shell rc</code></pre>")
 
-    echo("<p>on other systems, grab the installer from the <a href=\"https://ziglang.org/download/\">zig download page</a>.</p>")
+    echo("<p>on linux and macos zolt supports <code>x86_64</code> and <code>aarch64</code>. if your machine isn't one of those, sad.</p>")
 
-    echo("<h2>clone the thing</h2>")
+    echo("<h2>manual install</h2>")
 
-    echo("<pre><code>git clone https://github.com/iluvicecream/zolt.git\ncd zolt</code></pre>")
+    echo("<p>no script? fine. grab the right file from the <a href=\"https://github.com/iluvicecream/zolt/releases\">releases page</a>, then:</p>")
 
-    echo("<h2>build!!</h2>")
+    echo("<pre><code>chmod +x zoltd-x86_64-linux\nmv zoltd-x86_64-linux ~/.local/bin/zoltd</code></pre>")
 
-    echo("<p>run this inside the zolt folder the first build downloads Luau automatically, so it needs internet just that once:</p>")
+    echo("<p>make sure <code>~/.local/bin</code> is in your path, or drop the binary somewhere else that already is.</p>")
 
-    echo("<pre><code>zig build</code></pre>")
+    echo("<h2>build from source</h2>")
+
+    echo("<p>want to build it yourself? you'll need <a href=\"https://ziglang.org/download/\">zig</a> 0.16.0. the first build downloads luau automatically, so it needs internet just that once:</p>")
+
+    echo("<pre><code>git clone https://github.com/iluvicecream/zolt\ncd zolt\nzig build</code></pre>")
 
     echo("<p>when it finishes, you'll have the server at <code>zig-out/bin/zoltd</code>.</p>")
-
-    echo("<h2 id=\"runit\">run it</h2>")
-
-    echo("<pre><code>zig build run</code></pre>")
-
-    echo("<p>then open <a href=\"http://127.0.0.1:8080\">http://127.0.0.1:8080</a> in your browser you should see demo page. that it!</p>")
-
-    echo("<p>you can also run the binary directly. it reads <code>config.luau</code> from the folder you're in:</p>")
-
-    echo("<pre><code>./zig-out/bin/zoltd</code></pre>")
-
-    echo("<h2>profit :)</h2>")
-    echo("<p>sky the limit now. so just follow the documentation here and you'll be fineeee <:")
 
 render.turbo_frame_rsp_end()

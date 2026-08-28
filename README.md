@@ -17,8 +17,9 @@ zig build          # build ./zig-out/bin/zoltd
 zig build run      # build and run
 ```
 
-The server reads its configuration from the first command-line argument , falling back to `config.luau` in
-the working directory when no argument is given:
+The server reads its configuration from the first command-line argument,
+falling back to `config.luau` in the working directory when no argument is
+given:
 
 ```sh
 ./zoltd {path_to_config}
@@ -42,11 +43,13 @@ return {
 
 ## Static files
 
-The working directory is the webroot. Requests for `.lua`/`.luau` targets run
-as routes; every other request serves the file directly from the working
-directory as static content. So `style.css` in the working directory is served
-for `/style.css`, `index.luau` runs for `/`, and `/sub/` maps to
-`sub/index.luau` (which runs if it exists).
+The folder containing the config file is the webroot. Requests for
+`.lua`/`.luau` targets run as routes; every other request serves the file
+directly from the webroot as static content. So `style.css` next to
+`config.luau` is served for `/style.css`, `index.luau` runs for `/`, and
+`/sub/` maps to `sub/index.luau` (which runs if it exists). This means you
+can start the server from anywhere with `zoltd /path/to/config.luau` and it
+serves the folder that contains that config.
 
 Static files are served with a `content-type` guessed from the extension
 (HTML, CSS, JS, JSON, images, fonts, PDF, and more; unknown types fall back to

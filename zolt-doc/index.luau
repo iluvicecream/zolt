@@ -1,7 +1,7 @@
 local render = require("./render");
 
 function NavLink(name:string,href: string,turbo_frame_id: string,class: string)
-    echo("<a href=\"" .. href .. "\" data-turbo-frame=\"" .. turbo_frame_id .. "\" class=\"" .. class .. "\" data-sidebar-target=\"link\" data-action=\"sidebar#activate\">" .. name .. "</a>");
+    echo("<a href=\"" .. href .. "\" data-turbo-frame=\"" .. turbo_frame_id .. "\" class=\"" .. class .. "\" data-sidebar-target=\"link\" data-action=\"sidebar#activate\" >" .. name .. "</a>");
 end
 
 status(200);
@@ -25,12 +25,13 @@ render.html_start();
             echo("<div class=\"sidebar\">");
                 render.h1("Zolt","sidebar-header");
                 echo("<div data-controller=\"sidebar\" class=\"sidebar-links\">");
+                    echo("<p class=\"group-sidebar\" >get started</p>")
                     NavLink("Introduction","/doc/intro.luau","doc-content","nav-link");
                     NavLink("Installation","/doc/install.luau","doc-content","nav-link");
                 echo("</div>");
             echo("</div>");
 
-            echo("<div class=\"content\">");
+            echo("<div class=\"content\" data-controller=\"page\">");
                render.turbo_frame("doc-content");
             echo("</div>");
 
