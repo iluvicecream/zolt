@@ -34,6 +34,8 @@ render.html_start();
                     NavLink("request.path","/doc/ref/request.luau","doc-content","nav-link");
                     NavLink("response.status","/doc/ref/status.luau","doc-content","nav-link");
                     NavLink("response.header","/doc/ref/header.luau","doc-content","nav-link");
+                    echo("<p class=\"group-sidebar\">advance</p>")
+                    NavLink("zolt-om","/doc/advance/","doc-content","nav-link");
                 echo("</div>");
             echo("</div>");
 
