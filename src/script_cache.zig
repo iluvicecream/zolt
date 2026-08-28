@@ -50,6 +50,7 @@ pub const ScriptCache = struct {
 
     pub fn acquire(
         self: *ScriptCache,
+        root: Dir,
         io: Io,
         allocator: std.mem.Allocator,
         path: []const u8,
@@ -71,7 +72,7 @@ pub const ScriptCache = struct {
         }
         self.mutex.unlock(io);
 
-        const stat = Dir.statFile(.cwd(), io, path, .{ .follow_symlinks = false }) catch |err| switch (err) {
+        const stat = Dir.statFile(root, io, path, .{ .follow_symlinks = false }) catch |err| switch (err) {
             error.FileNotFound => return .not_found,
             else => return err,
         };
@@ -92,7 +93,7 @@ pub const ScriptCache = struct {
         }
         self.mutex.unlock(io);
 
-        const content = Dir.readFileAlloc(.cwd(), io, path, allocator, .limited(max_size)) catch |err| switch (err) {
+        const content = Dir.readFileAlloc(root, io, path, allocator, .limited(max_size)) catch |err| switch (err) {
             error.StreamTooLong => return .too_large,
             else => return err,
         };

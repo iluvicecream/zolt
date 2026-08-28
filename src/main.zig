@@ -13,13 +13,22 @@ pub fn main(init: std.process.Init) !void {
     const config_path = parseConfigPath(init);
     std.log.info("using config {s}", .{config_path});
 
-    var config = loadConfig(init.io, init.gpa, config_path) catch |err| {
+    const config_dir = std.fs.path.dirname(config_path) orelse ".";
+    const config_file = std.fs.path.basename(config_path);
+
+    var root = Io.Dir.openDir(.cwd(), init.io, config_dir, .{}) catch |err| {
+        std.log.err("failed to open root dir '{s}' err={}", .{ config_dir, err });
+        std.process.exit(12); // FAILED_ROOT_DIR
+    };
+    defer root.close(init.io);
+
+    var config = loadConfig(init.io, init.gpa, root, config_file) catch |err| {
         std.log.err("failed to load config err={}", .{err});
         std.process.exit(10); // INVALID_CONFIG
     };
     defer config.deinit(init.gpa);
 
-    httpServerSetup(init.io, config, init.gpa) catch |err| {
+    httpServerSetup(init.io, config, root, init.gpa) catch |err| {
         std.log.err("failed to setup http server err={}", .{err});
         std.process.exit(11); // FAILED_HTTP_SESSION
     };
@@ -31,11 +40,12 @@ fn parseConfigPath(init: std.process.Init) []const u8 {
     return args.next() orelse "config.luau";
 }
 
-fn loadConfig(io: Io, allocator: std.mem.Allocator, path: []const u8) !zolt.Config {
-    return zolt.Config.load(io, allocator, path);
+fn loadConfig(io: Io, allocator: std.mem.Allocator, root: Io.Dir, path: []const u8) !zolt.Config {
+    return zolt.Config.load(io, allocator, root, path);
 }
 
 const RouteFactory = struct {
+    root: Io.Dir,
     show_runtime_errors: bool,
     cache: ScriptCache,
 
@@ -43,7 +53,7 @@ const RouteFactory = struct {
         const self: *RouteFactory = @ptrCast(@alignCast(ctx));
         const handler = try allocator.create(RouteHandler);
         errdefer allocator.destroy(handler);
-        handler.* = try RouteHandler.init(allocator, self.show_runtime_errors, &self.cache);
+        handler.* = try RouteHandler.init(allocator, self.root, self.show_runtime_errors, &self.cache);
         return handler;
     }
 
@@ -55,13 +65,14 @@ const RouteFactory = struct {
     }
 };
 
-fn httpServerSetup(io: Io, config: zolt.Config, allocator: std.mem.Allocator) !void {
+fn httpServerSetup(io: Io, config: zolt.Config, root: Io.Dir, allocator: std.mem.Allocator) !void {
     const address = Io.net.IpAddress.parseLiteral(config.host) catch |err| {
         std.log.err("failed to parse host err={}", .{err});
         return err;
     };
 
     var factory = RouteFactory{
+        .root = root,
         .show_runtime_errors = config.is_show_runtime_error,
         .cache = ScriptCache.init(allocator, ScriptCache.max_cached_scripts),
     };

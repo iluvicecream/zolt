@@ -13,15 +13,17 @@ pub const ScriptCache = script_cache.ScriptCache;
 
 pub const RouteHandler = struct {
     allocator: std.mem.Allocator,
+    root: Dir,
     rt: runtime.Runtime,
     cache: *ScriptCache,
     show_runtime_errors: bool,
 
-    pub fn init(allocator: std.mem.Allocator, show_runtime_errors: bool, cache: *ScriptCache) !RouteHandler {
-        const rt = try runtime.Runtime.init(allocator, cache);
+    pub fn init(allocator: std.mem.Allocator, root: Dir, show_runtime_errors: bool, cache: *ScriptCache) !RouteHandler {
+        const rt = try runtime.Runtime.init(allocator, cache, root);
         errdefer rt.deinit();
         return .{
             .allocator = allocator,
+            .root = root,
             .rt = rt,
             .cache = cache,
             .show_runtime_errors = show_runtime_errors,
@@ -54,12 +56,12 @@ pub const RouteHandler = struct {
         const is_lua_route = std.mem.eql(u8, ext, ".lua") or std.mem.eql(u8, ext, ".luau");
 
         if (!is_lua_route) {
-            if (try serveStatic(io, req, target)) return;
+            if (try serveStatic(self.root, io, req, target)) return;
             std.log.warn("file not found target={s}", .{req.head.target});
             return respondNotFound(req);
         }
 
-        const lookup = self.cache.acquire(io, self.allocator, target, max_content_size) catch |err| {
+        const lookup = self.cache.acquire(self.root, io, self.allocator, target, max_content_size) catch |err| {
             std.log.err("route script error target={s} err={}", .{ target, err });
             return respondServerError(req, &http_rsp, null);
         };
@@ -110,8 +112,8 @@ pub const RouteHandler = struct {
         }
     }
 
-    fn serveStatic(io: Io, req: *std.http.Server.Request, target: []const u8) !bool {
-        const stat = Dir.statFile(.cwd(), io, target, .{ .follow_symlinks = false }) catch |err| switch (err) {
+    fn serveStatic(root: Dir, io: Io, req: *std.http.Server.Request, target: []const u8) !bool {
+        const stat = Dir.statFile(root, io, target, .{ .follow_symlinks = false }) catch |err| switch (err) {
             error.FileNotFound => return false,
             else => {
                 std.log.warn("static stat error path={s} err={}", .{ target, err });
@@ -120,7 +122,7 @@ pub const RouteHandler = struct {
         };
         if (stat.kind != .file) return false;
 
-        const file = Dir.openFile(.cwd(), io, target, .{
+        const file = Dir.openFile(root, io, target, .{
             .mode = .read_only,
             .follow_symlinks = false,
         }) catch |err| switch (err) {

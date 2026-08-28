@@ -30,7 +30,7 @@ fn requireFn(L: *luau.State) callconv(.c) c_int {
 
     var path_buf: [max_path_len]u8 = undefined;
     const base_len = resolvePath(rt.current_requirer orelse "", spec, &path_buf) orelse
-        return raise(L, "require: invalid module path '{s}' (must stay inside the working directory)", .{spec});
+        return raise(L, "require: invalid module path '{s}' (must stay inside the root directory)", .{spec});
     const base = path_buf[0..base_len];
 
     var file_buf: [max_path_len + 8]u8 = undefined;
@@ -38,7 +38,7 @@ fn requireFn(L: *luau.State) callconv(.c) c_int {
     if (std.fs.path.extension(base).len == 0) {
         var found = false;
         for ([_][]const u8{ "", ".luau", ".lua" }) |ext| {
-            if (findFile(rt.io, base, ext, &file_buf)) |path| {
+            if (findFile(rt.root, rt.io, base, ext, &file_buf)) |path| {
                 chosen = path;
                 found = true;
                 break;
@@ -46,7 +46,7 @@ fn requireFn(L: *luau.State) callconv(.c) c_int {
         }
         if (!found) return raise(L, "require: module '{s}' not found", .{spec});
     } else {
-        chosen = findFile(rt.io, base, "", &file_buf) orelse
+        chosen = findFile(rt.root, rt.io, base, "", &file_buf) orelse
             return raise(L, "require: module '{s}' not found", .{spec});
     }
 
@@ -64,7 +64,7 @@ fn requireFn(L: *luau.State) callconv(.c) c_int {
         return raise(L, "require: cyclic dependency detected while loading '{s}'", .{chosen});
 
     const bytecode: []const u8 = blk: {
-        const lookup = rt.cache.acquire(rt.io, rt.allocator, chosen, max_module_size) catch |err|
+        const lookup = rt.cache.acquire(rt.root, rt.io, rt.allocator, chosen, max_module_size) catch |err|
             return raise(L, "require: failed to load module '{s}' ({s})", .{ chosen, @errorName(err) });
         switch (lookup) {
             .ok => |bc| break :blk bc,
@@ -144,7 +144,7 @@ fn resolvePath(requirer: []const u8, spec: []const u8, out: []u8) ?usize {
     while (sit.next()) |seg| {
         if (seg.len == 0 or std.mem.eql(u8, seg, ".")) continue;
         if (std.mem.eql(u8, seg, "..")) {
-            if (n == 0) return null; // would escape the working directory
+            if (n == 0) return null; // would escape the root directory
             n -= 1;
             continue;
         }
@@ -169,14 +169,14 @@ fn resolvePath(requirer: []const u8, spec: []const u8, out: []u8) ?usize {
     return pos;
 }
 
-fn findFile(io: Io, base: []const u8, ext: []const u8, out: []u8) ?[:0]const u8 {
+fn findFile(root: Dir, io: Io, base: []const u8, ext: []const u8, out: []u8) ?[:0]const u8 {
     if (base.len + ext.len + 1 > out.len) return null;
     @memcpy(out[0..base.len], base);
     @memcpy(out[base.len .. base.len + ext.len], ext);
     out[base.len + ext.len] = 0;
     const path = out[0 .. base.len + ext.len :0];
 
-    const stat = Dir.statFile(.cwd(), io, path, .{ .follow_symlinks = false }) catch return null;
+    const stat = Dir.statFile(root, io, path, .{ .follow_symlinks = false }) catch return null;
     if (stat.kind != .file) return null;
     return path;
 }

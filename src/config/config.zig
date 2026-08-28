@@ -15,8 +15,8 @@ pub const Config = struct {
 
     // Load the config file, run it
     // and extract returned table for host value
-    pub fn load(io: Io, allocator: std.mem.Allocator, path: []const u8) !Config {
-        const content = try Dir.readFileAlloc(.cwd(), io, path, allocator, .limited(max_content_size));
+    pub fn load(io: Io, allocator: std.mem.Allocator, root: Dir, path: []const u8) !Config {
+        const content = try Dir.readFileAlloc(root, io, path, allocator, .limited(max_content_size));
         defer allocator.free(content);
 
         const L = luau.newState() orelse {

@@ -4,6 +4,7 @@ const HttpRsp = @import("../protocol/http_rsp.zig").HttpRsp;
 const script_cache = @import("../script_cache.zig");
 
 const Io = std.Io;
+const Dir = Io.Dir;
 
 pub const packages = struct {
     pub const echo = @import("packages/echo.zig");
@@ -28,6 +29,7 @@ pub const Runtime = struct {
     rsp: ?*HttpRsp = null,
     allocator: std.mem.Allocator,
     io: Io,
+    root: Dir,
     cache: *script_cache.ScriptCache,
     current_requirer: ?[]const u8 = null,
     loading_paths: [max_require_depth][]const u8 = undefined,
@@ -35,7 +37,7 @@ pub const Runtime = struct {
 
     pub const max_require_depth = 32;
 
-    pub fn init(allocator: std.mem.Allocator, cache: *script_cache.ScriptCache) !Runtime {
+    pub fn init(allocator: std.mem.Allocator, cache: *script_cache.ScriptCache, root: Dir) !Runtime {
         const L = luau.newState() orelse return error.LuauInitFailed;
         errdefer luau.close(L);
         luau.savePristineGlobals(L);
@@ -43,6 +45,7 @@ pub const Runtime = struct {
             .L = L,
             .allocator = allocator,
             .io = undefined,
+            .root = root,
             .cache = cache,
         };
     }
