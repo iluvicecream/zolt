@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-if [ "$#" -ne 1 ]; then
+if [ "$#" -ne 2 ]; then
     echo "usage: $0 <ssh-host> <folder>"
     echo "example: $0 user@example.com todo-list"
     exit 1
@@ -10,7 +10,7 @@ fi
 
 host="$1"
 folder="$2"
-zip_file="$2.zip"
+zip_file="$folder.zip"
 
 trap 'rm -f "$zip_file"' EXIT
 
