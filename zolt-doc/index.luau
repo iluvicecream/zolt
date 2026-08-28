@@ -31,6 +31,9 @@ render.html_start();
                     NavLink("First web","/doc/firstweb.luau","doc-content","nav-link");
                     echo("<p class=\"group-sidebar\">reference</p>")
                     NavLink("echo","/doc/ref/echo.luau","doc-content","nav-link");
+                    NavLink("request.path","/doc/ref/request.luau","doc-content","nav-link");
+                    NavLink("response.status","/doc/ref/status.luau","doc-content","nav-link");
+                    NavLink("response.header","/doc/ref/header.luau","doc-content","nav-link");
                 echo("</div>");
             echo("</div>");
 

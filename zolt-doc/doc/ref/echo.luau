@@ -36,4 +36,6 @@ render.turbo_frame_rsp_start("doc-content")
 
     echo("<p>output is buffered until the route finishes, so you can set <code>response.status()</code> or <code>response.header()</code> after echoing.</p>")
 
+    echo("<p>next up: <a href=\"/doc/ref/request.luau\">request.path</a>, <a href=\"/doc/ref/status.luau\">response.status</a>, and <a href=\"/doc/ref/header.luau\">response.header</a>.</p>")
+
 render.turbo_frame_rsp_end()
