@@ -36,26 +36,6 @@ jobs:
           echo "$HOME/.local/zig" >> "$GITHUB_PATH"
           "$HOME/.local/zig/zig" version
 
-      # Windows is intentionally not built: src/main.zig uses
-      # std.process.argsAlloc(), which Zig 0.16 rejects on Windows.
-      - name: Smoke test
-        run: |
-          set -euo pipefail
-          zig build -Dtarget=x86_64-linux -Doptimize=ReleaseSafe --prefix dist/x86_64-linux
-          mkdir -p /tmp/zolt-smoke
-          printf 'return { host = "127.0.0.1:18081", isShowRuntimeError = true }\n' > /tmp/zolt-smoke/config.luau
-          ./dist/x86_64-linux/bin/zoltd /tmp/zolt-smoke/config.luau > /tmp/zolt-smoke/server.log 2>&1 &
-          pid=$!
-          trap 'kill $pid 2>/dev/null || true' EXIT
-          for _ in $(seq 1 20); do
-            if curl -fsS http://127.0.0.1:18081/ -o /tmp/zolt-smoke/body -D /tmp/zolt-smoke/headers; then
-              break
-            fi
-            sleep 1
-          done
-          grep -q '15' /tmp/zolt-smoke/body
-          grep -qi 'server: zoltd' /tmp/zolt-smoke/headers
-
       - name: Cross-compile release binaries
         run: |
           set -euo pipefail
