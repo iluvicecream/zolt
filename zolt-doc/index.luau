@@ -28,6 +28,9 @@ render.html_start();
                     echo("<p class=\"group-sidebar\" >get started</p>")
                     NavLink("Introduction","/doc/intro.luau","doc-content","nav-link");
                     NavLink("Installation","/doc/install.luau","doc-content","nav-link");
+                    NavLink("First web","/doc/firstweb.luau","doc-content","nav-link");
+                    echo("<p class=\"group-sidebar\">reference</p>")
+                    NavLink("echo","/doc/ref/echo.luau","doc-content","nav-link");
                 echo("</div>");
             echo("</div>");
 
