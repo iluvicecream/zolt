@@ -63,5 +63,5 @@ every request the server try to find a .luau file at that path if it doesn't fil
 
 # Credits
 
-[Luau](https://luau.org/)
-[Grug Hand Font](https://handdrawn.software/grug/)
+- [Luau](https://luau.org/)
+- [Grug Hand Font](https://handdrawn.software/grug/)
