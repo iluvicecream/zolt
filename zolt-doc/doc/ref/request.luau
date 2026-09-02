@@ -28,6 +28,6 @@ render.turbo_frame_rsp_start("doc-content")
 
     echo("<p>it returns a string, never <code>nil</code>. call it as many times as you like.</p>")
 
-    echo("<p>see also <a href=\"/doc/ref/echo.luau\">echo</a>.</p>")
+    echo("<p>see also <a href=\"/doc/ref/query.luau\">request.query</a>.</p>")
 
 render.turbo_frame_rsp_end()

@@ -87,7 +87,7 @@ pub const RouteHandler = struct {
             },
             .ok => |bytecode| {
                 defer self.allocator.free(bytecode);
-                self.runScript(io, target, pathWithoutQuery(req.head.target), bytecode, &http_rsp) catch |err| {
+                self.runScript(io, target, pathWithoutQuery(req.head.target), queryWithoutMark(req.head.target), bytecode, &http_rsp) catch |err| {
                     std.log.err("route lua error err={} target={s}", .{ err, target });
                     const detail: ?[]const u8 = switch (err) {
                         error.RouteScriptOutputTooLarge => "route script output exceeds 16 KB",
@@ -162,13 +162,14 @@ pub const RouteHandler = struct {
         io: Io,
         target: []const u8,
         request_path: []const u8,
+        request_query: []const u8,
         bytecode: []const u8,
         rsp: *HttpRsp,
     ) !void {
         self.rt.beginRequest(rsp);
         self.rt.io = io;
         runtime.packages.echo.register(self.rt.L, rsp);
-        runtime.packages.request.register(self.rt.L, request_path);
+        runtime.packages.request.register(self.rt.L, request_path, request_query);
         runtime.packages.require.register(self.rt.L, &self.rt);
         runtime.packages.response.register(self.rt.L, rsp);
 
@@ -199,6 +200,13 @@ fn chunkName(path: []const u8, buf: *[256]u8) [:0]const u8 {
 fn pathWithoutQuery(target: []const u8) []const u8 {
     if (std.mem.indexOfAny(u8, target, "?#")) |i| return target[0..i];
     return target;
+}
+
+fn queryWithoutMark(target: []const u8) []const u8 {
+    const end = std.mem.indexOfScalar(u8, target, '#') orelse target.len;
+    const before_fragment = target[0..end];
+    const q = std.mem.indexOfScalar(u8, before_fragment, '?') orelse return "";
+    return before_fragment[q + 1 ..];
 }
 
 fn resolveTarget(target: []const u8, buf: []u8) ?[]const u8 {

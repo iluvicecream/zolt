@@ -32,6 +32,7 @@ render.html_start();
                     echo("<p class=\"group-sidebar\">reference</p>")
                     NavLink("echo","/doc/ref/echo.luau","doc-content","nav-link");
                     NavLink("request.path","/doc/ref/request.luau","doc-content","nav-link");
+                    NavLink("request.query","/doc/ref/query.luau","doc-content","nav-link");
                     NavLink("response.status","/doc/ref/status.luau","doc-content","nav-link");
                     NavLink("response.header","/doc/ref/header.luau","doc-content","nav-link");
                     echo("<p class=\"group-sidebar\">advance</p>")
