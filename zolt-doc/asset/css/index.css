@@ -1,3 +1,14 @@
+:root {
+    color-scheme: light dark;
+
+    --bg-color: light-dark(#ffffff, #222222);
+    --nav-color: light-dark(#000000, #ffffff);
+}
+
+body {
+    background-color: var(--bg-color);
+}
+
 .sidebar-header {
     font-family: "GrugHand", sans-serif;
     margin-left: 10px;
@@ -13,7 +24,7 @@
     margin-bottom: 5px;
 
     font-family: "GrugHand", sans-serif;
-    color: #000000;
+    color: var(--nav-color);
     text-decoration: none;
 }
 
@@ -22,7 +33,7 @@
 }
 
 .nav-link.active {
-    color: #000000;
+    color: var(--nav-color);
     text-decoration: wavy underline;
     text-underline-offset: 5px;
 }

@@ -36,14 +36,14 @@
     font-family:
         "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
     font-size: 15px;
-    background: #f2f0ea;
+    background: light-dark(#f2f0ea, #313131);
     border-radius: 4px;
     padding: 2px 5px;
 }
 
 #doc-content pre {
-    background: #f2f0ea;
-    border: 1px solid #e2dfd5;
+    background: light-dark(#f2f0ea, #313131);
+    border: 1px solid light-dark(#e2dfd5, #484848);
     border-radius: 8px;
     padding: 14px 16px;
     margin: 0 0 16px 0;
