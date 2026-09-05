@@ -29,7 +29,7 @@ pub const HttpSession = struct {
         const limit = @max(max_connections, 1);
         return .{
             .io = io,
-            .server = try addr.listen(io, .{ reuse_address = true }),
+            .server = try addr.listen(io, .{ .reuse_address = true }),
             .allocator = allocator,
             .conn_handler = conn_handler,
             .max_connections = limit,
