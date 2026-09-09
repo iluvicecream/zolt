@@ -8,7 +8,7 @@ local page = HOL.document()
             H("h1"):text("Welcome to My Website")
         ),
         H("main"):class("container"):child(
-            H("p"):text("This HTML was generated cleanly with zero pre-parsers!")
+            H("p"):text("This page is composed by HOL!")
         )
     )
 

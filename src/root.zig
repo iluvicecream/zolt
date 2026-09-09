@@ -2,7 +2,7 @@
 const std = @import("std");
 const Io = std.Io;
 
-pub const version = "0.2.1";
+pub const version = "0.3.0";
 
 pub const Protocol = @import("protocol/protocol.zig");
 pub const Network = @import("network/network.zig");
