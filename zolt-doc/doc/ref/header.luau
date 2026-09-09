@@ -1,37 +1,26 @@
-local render = require("../../render")
+HOL = require("@hol");
+H = HOL.el;
 
-render.turbo_frame_rsp_start("doc-content")
+local content =
+        H("turbo-frame")
+            :id("doc-content")
+            :child(
+                H("h1"):class("doc-header"):child("response.header"),
+                H("h2"):child("signature"),
+                H("pre"):child(H("code"):child("response.header(name: string, value: string)")),
+                H("h2"):child("description"),
+                H("p"):child("adds a response header. call it once per header you want to send; repeating the same name just adds another header line."),
+                H("p"):child("header names and values must be valid, and the response is limited to 8 headers with 1 kb of total header storage. if a name or value is invalid, or the limits are hit, zolt raises a runtime error."),
+                H("p"):child("it returns nothing."),
+                H("h2"):child("examples"),
+                H("p"):child("serve json:"),
+                H("pre"):child(H("code"):child("response.header(\"content-type\", \"application/json\");\necho(\"{\\\"ok\\\": true}\");")),
+                H("p"):child("custom headers:"),
+                H("pre"):child(H("code"):child("response.header(\"x-powered-by\", \"zolt\");\nresponse.header(\"cache-control\", \"no-store\");")),
+                H("h2"):child("notes"),
+                H("p"):child("when the route finishes without setting a content type, zolt sends ", H("code"):child("text/html; charset=utf-8"), "."),
+                H("p"):child("output is buffered until the route finishes, so you can set headers before or after echoing."),
+                H("p"):child("see also ", H("a"):attr("href", "/doc/ref/status.luau"):child("response.status"), ".")
+            )
 
-    render.h1("response.header", "doc-header")
-
-    echo("<h2>signature</h2>")
-
-    echo("<pre><code>response.header(name: string, value: string)</code></pre>")
-
-    echo("<h2>description</h2>")
-
-    echo("<p>adds a response header. call it once per header you want to send; repeating the same name just adds another header line.</p>")
-
-    echo("<p>header names and values must be valid, and the response is limited to 8 headers with 1 kb of total header storage. if a name or value is invalid, or the limits are hit, zolt raises a runtime error.</p>")
-
-    echo("<p>it returns nothing.</p>")
-
-    echo("<h2>examples</h2>")
-
-    echo("<p>serve json:</p>")
-
-    echo("<pre><code>response.header(\"content-type\", \"application/json\");\necho(\"{\\\"ok\\\": true}\");</code></pre>")
-
-    echo("<p>custom headers:</p>")
-
-    echo("<pre><code>response.header(\"x-powered-by\", \"zolt\");\nresponse.header(\"cache-control\", \"no-store\");</code></pre>")
-
-    echo("<h2>notes</h2>")
-
-    echo("<p>when the route finishes without setting a content type, zolt sends <code>text/html; charset=utf-8</code>.</p>")
-
-    echo("<p>output is buffered until the route finishes, so you can set headers before or after echoing.</p>")
-
-    echo("<p>see also <a href=\"/doc/ref/status.luau\">response.status</a>.</p>")
-
-render.turbo_frame_rsp_end()
+echo(content:render())

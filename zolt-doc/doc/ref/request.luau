@@ -1,33 +1,24 @@
-local render = require("../../render")
+HOL = require("@hol");
+H = HOL.el;
 
-render.turbo_frame_rsp_start("doc-content")
+local content =
+        H("turbo-frame")
+            :id("doc-content")
+            :child(
+                H("h1"):class("doc-header"):child("request.path"),
+                H("h2"):child("signature"),
+                H("pre"):child(H("code"):child("request.path() -> string")),
+                H("h2"):child("description"),
+                H("p"):child("returns the url path of the current request, without the query string or fragment. the value always starts with a slash and is available in every route."),
+                H("h2"):child("examples"),
+                H("pre"):child(H("code"):child("echo(\"you are at \" .. request.path());")),
+                H("p"):child("for a request to ", H("code"):child("/hello.luau?name=zolt"), ", that prints ", H("code"):child("you are at /hello.luau"), ". a few more:"),
+                H("pre"):child(H("code"):child("request              request.path()\n/                    /\n/hello.luau          /hello.luau\n/hello.luau?x=1     /hello.luau\n/sub/                /sub/")),
+                H("p"):child("use it to branch on which page is being requested:"),
+                H("pre"):child(H("code"):child("if request.path() == \"/\" then\n    echo(\"home\")\nelse\n    echo(\"somewhere else\")\nend")),
+                H("h2"):child("notes"),
+                H("p"):child("it returns a string, never ", H("code"):child("nil"), ". call it as many times as you like."),
+                H("p"):child("see also ", H("a"):attr("href", "/doc/ref/query.luau"):child("request.query"), ".")
+            )
 
-    render.h1("request.path", "doc-header")
-
-    echo("<h2>signature</h2>")
-
-    echo("<pre><code>request.path() -&gt; string</code></pre>")
-
-    echo("<h2>description</h2>")
-
-    echo("<p>returns the url path of the current request, without the query string or fragment. the value always starts with a slash and is available in every route.</p>")
-
-    echo("<h2>examples</h2>")
-
-    echo("<pre><code>echo(\"you are at \" .. request.path());</code></pre>")
-
-    echo("<p>for a request to <code>/hello.luau?name=zolt</code>, that prints <code>you are at /hello.luau</code>. a few more:</p>")
-
-    echo("<pre><code>request              request.path()\n/                    /\n/hello.luau          /hello.luau\n/hello.luau?x=1     /hello.luau\n/sub/                /sub/</code></pre>")
-
-    echo("<p>use it to branch on which page is being requested:</p>")
-
-    echo("<pre><code>if request.path() == \"/\" then\n    echo(\"home\")\nelse\n    echo(\"somewhere else\")\nend</code></pre>")
-
-    echo("<h2>notes</h2>")
-
-    echo("<p>it returns a string, never <code>nil</code>. call it as many times as you like.</p>")
-
-    echo("<p>see also <a href=\"/doc/ref/query.luau\">request.query</a>.</p>")
-
-render.turbo_frame_rsp_end()
+echo(content:render())

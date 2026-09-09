@@ -1,41 +1,28 @@
-local render = require("../../render")
+HOL = require("@hol");
+H = HOL.el;
 
-render.turbo_frame_rsp_start("doc-content")
+local content =
+        H("turbo-frame")
+            :id("doc-content")
+            :child(
+                H("h1"):class("doc-header"):child("echo"),
+                H("h2"):child("signature"),
+                H("pre"):child(H("code"):child("echo(content: any)")),
+                H("h2"):child("description"),
+                H("p"):child("appends strings to the response body, in the order you pass them. call it as many times as you like; each call adds to what the browser receives when the route finishes."),
+                H("p"):child("it returns nothing."),
+                H("h2"):child("examples"),
+                H("p"):child("a plain text page:"),
+                H("pre"):child(H("code"):child("echo(\"Hello, world!\");")),
+                H("p"):child("html is just text too:"),
+                H("pre"):child(H("code"):child("echo(\"<h1>hello from zolt!</h1>\");")),
+                H("p"):child("multiple values are written one after another, handy for mixing variables in:"),
+                H("pre"):child(H("code"):child("local name = \"zolt\"\necho(\"<h1>hello, \" .. name .. \"!</h1>\");")),
+                H("h2"):child("notes"),
+                H("p"):child("the response body is limited to 16 kb. if a route writes more than that, zolt responds with an error instead of serving a truncated page."),
+                H("p"):child("when the route is done, zolt sends the body as ", H("code"):child("text/html; charset=utf-8"), " unless you set another content type with ", H("code"):child("response.header()"), "."),
+                H("p"):child("output is buffered until the route finishes, so you can set ", H("code"):child("response.status()"), " or ", H("code"):child("response.header()"), " after echoing."),
+                H("p"):child("next up: ", H("a"):attr("href", "/doc/ref/request.luau"):child("request.path"), ", ", H("a"):attr("href", "/doc/ref/query.luau"):child("request.query"), ", ", H("a"):attr("href", "/doc/ref/status.luau"):child("response.status"), ", and ", H("a"):attr("href", "/doc/ref/header.luau"):child("response.header"), ".")
+            )
 
-    render.h1("echo", "doc-header")
-
-    echo("<h2>signature</h2>")
-
-    echo("<pre><code>echo(content: any)</code></pre>")
-
-    echo("<h2>description</h2>")
-
-    echo("<p>appends strings to the response body, in the order you pass them. call it as many times as you like; each call adds to what the browser receives when the route finishes.</p>")
-
-    echo("<p>it returns nothing.</p>")
-
-    echo("<h2>examples</h2>")
-
-    echo("<p>a plain text page:</p>")
-
-    echo("<pre><code>echo(\"Hello, world!\");</code></pre>")
-
-    echo("<p>html is just text too:</p>")
-
-    echo("<pre><code>echo(\"&lt;h1&gt;hello from zolt!&lt;/h1&gt;\");</code></pre>")
-
-    echo("<p>multiple values are written one after another, handy for mixing variables in:</p>")
-
-    echo("<pre><code>local name = \"zolt\"\necho(\"&lt;h1&gt;hello, \" .. name .. \"!&lt;/h1&gt;\");</code></pre>")
-
-    echo("<h2>notes</h2>")
-
-    echo("<p>the response body is limited to 16 kb. if a route writes more than that, zolt responds with an error instead of serving a truncated page.</p>")
-
-    echo("<p>when the route is done, zolt sends the body as <code>text/html; charset=utf-8</code> unless you set another content type with <code>response.header()</code>.</p>")
-
-    echo("<p>output is buffered until the route finishes, so you can set <code>response.status()</code> or <code>response.header()</code> after echoing.</p>")
-
-    echo("<p>next up: <a href=\"/doc/ref/request.luau\">request.path</a>, <a href=\"/doc/ref/query.luau\">request.query</a>, <a href=\"/doc/ref/status.luau\">response.status</a>, and <a href=\"/doc/ref/header.luau\">response.header</a>.</p>")
-
-render.turbo_frame_rsp_end()
+echo(content:render())

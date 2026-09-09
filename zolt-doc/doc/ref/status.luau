@@ -1,35 +1,25 @@
-local render = require("../../render")
+HOL = require("@hol");
+H = HOL.el;
 
-render.turbo_frame_rsp_start("doc-content")
+local content =
+        H("turbo-frame")
+            :id("doc-content")
+            :child(
+                H("h1"):class("doc-header"):child("response.status"),
+                H("h2"):child("signature"),
+                H("pre"):child(H("code"):child("response.status(code: number)")),
+                H("h2"):child("description"),
+                H("p"):child("sets the http status code for the response. the default is ", H("code"):child("200"), "; call this when you want something else, like a ", H("code"):child("404"), " for a missing page or a ", H("code"):child("500"), " for an error."),
+                H("p"):child("the code must be a whole number between ", H("code"):child("100"), " and ", H("code"):child("599"), ", and it must be a status zolt recognizes. anything else raises a runtime error."),
+                H("p"):child("it returns nothing."),
+                H("h2"):child("examples"),
+                H("p"):child("a missing page:"),
+                H("pre"):child(H("code"):child("response.status(404);\necho(\"page not found\");")),
+                H("p"):child("a redirect:"),
+                H("pre"):child(H("code"):child("response.status(302);\nresponse.header(\"location\", \"/home\");\necho(\"moving you along...\");")),
+                H("h2"):child("notes"),
+                H("p"):child("output is buffered until the route finishes, so you can set the status before or after echoing."),
+                H("p"):child("see also ", H("a"):attr("href", "/doc/ref/header.luau"):child("response.header"), ".")
+            )
 
-    render.h1("response.status", "doc-header")
-
-    echo("<h2>signature</h2>")
-
-    echo("<pre><code>response.status(code: number)</code></pre>")
-
-    echo("<h2>description</h2>")
-
-    echo("<p>sets the http status code for the response. the default is <code>200</code>; call this when you want something else, like a <code>404</code> for a missing page or a <code>500</code> for an error.</p>")
-
-    echo("<p>the code must be a whole number between <code>100</code> and <code>599</code>, and it must be a status zolt recognizes. anything else raises a runtime error.</p>")
-
-    echo("<p>it returns nothing.</p>")
-
-    echo("<h2>examples</h2>")
-
-    echo("<p>a missing page:</p>")
-
-    echo("<pre><code>response.status(404);\necho(\"page not found\");</code></pre>")
-
-    echo("<p>a redirect:</p>")
-
-    echo("<pre><code>response.status(302);\nresponse.header(\"location\", \"/home\");\necho(\"moving you along...\");</code></pre>")
-
-    echo("<h2>notes</h2>")
-
-    echo("<p>output is buffered until the route finishes, so you can set the status before or after echoing.</p>")
-
-    echo("<p>see also <a href=\"/doc/ref/header.luau\">response.header</a>.</p>")
-
-render.turbo_frame_rsp_end()
+echo(content:render())

@@ -1,55 +1,35 @@
-local render = require("../render")
+HOL = require("@hol");
+H = HOL.el;
 
-render.turbo_frame_rsp_start("doc-content")
+local content =
+        H("turbo-frame")
+            :id("doc-content")
+            :child(
+                H("h1"):class("doc-header"):child("your first web page"),
+                H("p"):child("ok, zolt is installed. time to make something appear in the browser. you'll have a working hello world in about thirty seconds. (jk prob gonna take longer than that)"),
+                H("h2"):child("make an app folder"),
+                H("p"):child("everything a zolt app needs lives in one folder. make one and step inside:"),
+                H("pre"):child(H("code"):child("mkdir myapp\ncd myapp")),
+                H("h2"):child("tell zolt where to listen"),
+                H("p"):child("create ", H("code"):child("config.luau"), " with the address you want the server to listen on:"),
+                H("pre"):child(H("code"):child("return {\n    host = \"127.0.0.1:8080\",\n}")),
+                H("p"):child("that's a plain lua file, so you can change the port anytime. ", H("code"):child("127.0.0.1:8080"), " is a great default for local development."),
+                H("h2"):child("write your first page"),
+                H("p"):child("now create ", H("code"):child("index.luau"), " in the same folder. requests to ", H("code"):child("/"), " run this file:"),
+                H("pre"):child(H("code"):child("echo(\"Hello, world!\");")),
+                H("p"):child("that's the whole app. ", H("code"):child("echo"), " sends text back to the browser, just like ", H("code"):child("print"), " in other languages."),
+                H("h2"):child("run it"),
+                H("p"):child("start the server from your app folder:"),
+                H("pre"):child(H("code"):child("zoltd")),
+                H("p"):child("zolt reads ", H("code"):child("config.luau"), " from the folder you're in and serves that folder as the webroot. you can also point it at a config anywhere:"),
+                H("pre"):child(H("code"):child("zoltd /path/to/myapp/config.luau")),
+                H("p"):child("now open ", H("a"):attr("href", "http://127.0.0.1:8080"):child("http://127.0.0.1:8080"), " in your browser. hello, world! welcome to zolt."),
+                H("h2"):child("make it a bit more interesting"),
+                H("p"):child("every ", H("code"):child(".luau"), " file is its own route. add a ", H("code"):child("hello.luau"), ":"),
+                H("pre"):child(H("code"):child("echo(\"<h1>hello from zolt!</h1>\");\necho(\"<p>you are at \" .. request.path() .. \"</p>\");")),
+                H("p"):child("save it and visit ", H("a"):attr("href", "http://127.0.0.1:8080/hello.luau"):child("http://127.0.0.1:8080/hello.luau"), ". the ", H("code"):child("request"), " tells your route about the incoming request, starting with ", H("code"):child("path()"), "."),
+                H("p"):child("everything else in your folder is served as a static file automatically, so css, images, and javascript just work next to your routes."),
+                H("p"):child("that's the tour. check out the ", H("a"):attr("href", "/doc/intro.luau"):child("introduction"), " or the ", H("a"):attr("href", "/doc/install.luau"):child("install guide"), " if you skipped ahead, then go build something :)")
+            )
 
-    render.h1("your first web page", "doc-header")
-
-    echo("<p>ok, zolt is installed. time to make something appear in the browser. you'll have a working hello world in about thirty seconds. (jk prob gonna take longer than that)</p>")
-
-    echo("<h2>make an app folder</h2>")
-
-    echo("<p>everything a zolt app needs lives in one folder. make one and step inside:</p>")
-
-    echo("<pre><code>mkdir myapp\ncd myapp</code></pre>")
-
-    echo("<h2>tell zolt where to listen</h2>")
-
-    echo("<p>create <code>config.luau</code> with the address you want the server to listen on:</p>")
-
-    echo("<pre><code>return {\n    host = \"127.0.0.1:8080\",\n}</code></pre>")
-
-    echo("<p>that's a plain lua file, so you can change the port anytime. <code>127.0.0.1:8080</code> is a great default for local development.</p>")
-
-    echo("<h2>write your first page</h2>")
-
-    echo("<p>now create <code>index.luau</code> in the same folder. requests to <code>/</code> run this file:</p>")
-
-    echo("<pre><code>echo(\"Hello, world!\");</code></pre>")
-
-    echo("<p>that's the whole app. <code>echo</code> sends text back to the browser, just like <code>print</code> in other languages.</p>")
-
-    echo("<h2>run it</h2>")
-
-    echo("<p>start the server from your app folder:</p>")
-
-    echo("<pre><code>zoltd</code></pre>")
-
-    echo("<p>zolt reads <code>config.luau</code> from the folder you're in and serves that folder as the webroot. you can also point it at a config anywhere:</p>")
-
-    echo("<pre><code>zoltd /path/to/myapp/config.luau</code></pre>")
-
-    echo("<p>now open <a href=\"http://127.0.0.1:8080\">http://127.0.0.1:8080</a> in your browser. hello, world! welcome to zolt.</p>")
-
-    echo("<h2>make it a bit more interesting</h2>")
-
-    echo("<p>every <code>.luau</code> file is its own route. add a <code>hello.luau</code>:</p>")
-
-    echo("<pre><code>echo(\"&lt;h1&gt;hello from zolt!&lt;/h1&gt;\");\necho(\"&lt;p&gt;you are at \" .. request.path() .. \"&lt;/p&gt;\");</code></pre>")
-
-    echo("<p>save it and visit <a href=\"http://127.0.0.1:8080/hello.luau\">http://127.0.0.1:8080/hello.luau</a>. the <code>request</code> tells your route about the incoming request, starting with <code>path()</code>.</p>")
-
-    echo("<p>everything else in your folder is served as a static file automatically, so css, images, and javascript just work next to your routes.</p>")
-
-    echo("<p>that's the tour. check out the <a href=\"/doc/intro.luau\">introduction</a> or the <a href=\"/doc/install.luau\">install guide</a> if you skipped ahead, then go build something :)</p>")
-
-render.turbo_frame_rsp_end()
+echo(content:render())
