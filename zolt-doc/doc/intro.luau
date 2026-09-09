@@ -1,20 +1,18 @@
-local render = require("../render")
+HOL = require("@hol");
+H = HOL.el;
 
-render.turbo_frame_rsp_start("doc-content")
+local content =
+        H("turbo-frame")
+            :id("doc-content")
+            :child(
+                H("h1"):class("doc-header"):child("what is zolt?"),
+                H("p"):child("zolt is a tiny web server that speaks your language. you write your pages in ", H("strong"):child("luau"), " a friendly, fast version of lua and zolt runs them for you. no build step, no framework, no fuss."),
+                H("p"):child("it's a bit like php, but with lua instead. a request for " , H("code"):child("/hello.luau") , " simply runs the file " , H("code"):child("hello.luau") , " in your project folder and sends whatever it outputs back to the browser."),
+                H("p"):child("here's the smallest zolt app you can write :)"),
+                H("pre"):child(H("code"):child("echo(\"Hello, world!\");")),
+                H("p"):child("that's it. save the file, visit it in your browser, and you have a working web page."),
+                H("p"):child("everything else in your folder css, images, javascript is served as static files automatically. and since zolt is written in " , H("strong"):child("zig") , ", it's small, fast, and starts up in the blink of an eye."),
+                H("p"):child("in fact this documentation page is also powered by zolt as well.")
+            )
 
-    render.h1("what is zolt?", "doc-header")
-
-    echo("<p>zolt is a tiny web server that speaks your language. you write your pages in <strong>luau</strong> a friendly, fast version of lua and zolt runs them for you. no build step, no framework, no fuss.</p>")
-
-    echo("<p>it's a bit like php, but with lua instead. a request for <code>/hello.luau</code> simply runs the file <code>hello.luau</code> in your project folder and sends whatever it outputs back to the browser.</p>")
-
-    echo("<p>here's the smallest zolt app you can write :) </p>")
-
-    echo("<pre><code>echo(\"Hello, world!\");</code></pre>")
-
-    echo("<p>that's it. save the file, visit it in your browser, and you have a working web page.</p>")
-
-    echo("<p>everything else in your folder css, images, javascript is served as static files automatically. and since zolt is written in <strong>zig</strong>, it's small, fast, and starts up in the blink of an eye.</p>")
-
-    echo("<p>in fact this documentation page is also powered by zolt as well.</p>")
-render.turbo_frame_rsp_end()
+echo(content:render())
