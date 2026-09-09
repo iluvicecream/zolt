@@ -46,6 +46,8 @@ local page = HOL.document()
                                         NavLink("request.query","/doc/ref/query.luau","doc-content","nav-link"),
                                         NavLink("response.status","/doc/ref/status.luau","doc-content","nav-link"),
                                         NavLink("response.header","/doc/ref/header.luau","doc-content","nav-link"),
+                                        H("p"):class("group-sidebar"):text("standard library"),
+                                        NavLink("@hol","/doc/stdlib/hol.luau","doc-content","nav-link"),
                                         H("p"):class("group-sidebar"):text("advanced"),
                                         NavLink("zolt-om","/doc/advance/","doc-content","nav-link")
                                     )
