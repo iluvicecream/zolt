@@ -45,6 +45,17 @@ after that visit http://127.0.0.1:8080 in your browser. hello, world! welcome to
 
 Refer to here for more info about api reference [here!](https://zolt-doc.perr.dev/)
 
+# Built-in modules
+
+`zoltd` ships a small standard library of Luau modules. Any route script can load one from any folder depth with an `@` require:
+
+```luau
+local version = require("@std/version");
+echo(version.name .. "/" .. version.version);
+```
+
+Each `@name` maps to a file inside the embedded `std_lib/` folder (`@std/version` is `std_lib/std/version.luau`). Requiring a built-in that does not exist raises a `require` error and never falls back to your app's files.
+
 # Build from source
 
 want to build it yourself? you'll need zig 0.16.0. the first build downloads luau automatically, so it needs internet just that once:

@@ -2,6 +2,7 @@ const std = @import("std");
 const luau = @import("zolt_luau");
 const HttpRsp = @import("../protocol/http_rsp.zig").HttpRsp;
 const script_cache = @import("../script_cache.zig");
+const stdlib_mod = @import("stdlib.zig");
 
 const Io = std.Io;
 const Dir = Io.Dir;
@@ -31,13 +32,19 @@ pub const Runtime = struct {
     io: Io,
     root: Dir,
     cache: *script_cache.ScriptCache,
+    stdlib: *const stdlib_mod.Catalog,
     current_requirer: ?[]const u8 = null,
     loading_paths: [max_require_depth][]const u8 = undefined,
     loading_count: usize = 0,
 
     pub const max_require_depth = 32;
 
-    pub fn init(allocator: std.mem.Allocator, cache: *script_cache.ScriptCache, root: Dir) !Runtime {
+    pub fn init(
+        allocator: std.mem.Allocator,
+        cache: *script_cache.ScriptCache,
+        root: Dir,
+        stdlib: *const stdlib_mod.Catalog,
+    ) !Runtime {
         const L = luau.newState() orelse return error.LuauInitFailed;
         errdefer luau.close(L);
         luau.savePristineGlobals(L);
@@ -47,6 +54,7 @@ pub const Runtime = struct {
             .io = undefined,
             .root = root,
             .cache = cache,
+            .stdlib = stdlib,
         };
     }
 

@@ -1,5 +1,7 @@
 const std = @import("std");
 
+const Io = std.Io;
+
 pub fn build(b: *std.Build) void {
     const target = b.standardTargetOptions(.{});
     const optimize = b.standardOptimizeOption(.{});
@@ -25,6 +27,9 @@ pub fn build(b: *std.Build) void {
     });
     luau_mod.linkLibrary(luau_lib);
 
+    const stdlib_module = addEmbeddedStdlib(b, target, optimize);
+    mod.addImport("zolt_stdlib", stdlib_module);
+
     mod.addImport("zolt_luau", luau_mod);
 
     const exe = b.addExecutable(.{
@@ -48,6 +53,125 @@ pub fn build(b: *std.Build) void {
 
     if (b.args) |args| {
         run_cmd.addArgs(args);
+    }
+}
+
+fn addEmbeddedStdlib(
+    b: *std.Build,
+    target: std.Build.ResolvedTarget,
+    optimize: std.builtin.OptimizeMode,
+) *std.Build.Module {
+    const wf = b.addWriteFiles();
+    _ = wf.addCopyDirectory(b.path("std_lib"), "std_lib", .{});
+
+    const io = b.graph.io;
+    const std_lib_path = b.pathFromRoot("std_lib");
+    var dir = Io.Dir.cwd().openDir(io, std_lib_path, .{ .iterate = true }) catch |err| {
+        std.debug.print("error: cannot open std_lib directory: {s}\n", .{@errorName(err)});
+        std.process.exit(2);
+    };
+    defer dir.close(io);
+
+    var walker = Io.Dir.walk(dir, b.allocator) catch |err| {
+        std.debug.print("error: cannot walk std_lib directory: {s}\n", .{@errorName(err)});
+        std.process.exit(2);
+    };
+    defer walker.deinit();
+
+    var rel_paths: std.ArrayList([]const u8) = .empty;
+    defer rel_paths.deinit(b.allocator);
+
+    while (true) {
+        const entry = walker.next(io) catch |err| {
+            std.debug.print("error: cannot read std_lib directory: {s}\n", .{@errorName(err)});
+            std.process.exit(2);
+        };
+        const current = entry orelse break;
+        if (current.kind != .file) continue;
+        const rel = current.path;
+        if (!std.mem.endsWith(u8, rel, ".luau") and !std.mem.endsWith(u8, rel, ".lua")) continue;
+        rel_paths.append(b.allocator, b.dupe(rel)) catch {
+            std.debug.print("error: out of memory scanning std_lib\n", .{});
+            std.process.exit(2);
+        };
+    }
+
+    std.mem.sort([]const u8, rel_paths.items, {}, pathLessThan);
+
+    var out: std.ArrayList(u8) = .empty;
+    defer out.deinit(b.allocator);
+
+    out.appendSlice(b.allocator,
+        \\pub const Module = struct {
+        \\    spec: [:0]const u8,
+        \\    source: []const u8,
+        \\};
+        \\
+        \\pub const modules = [_]Module{
+        \\
+    ) catch {
+        std.debug.print("error: out of memory writing std_lib manifest\n", .{});
+        std.process.exit(2);
+    };
+
+    var aliases: std.ArrayList([]const u8) = .empty;
+    defer aliases.deinit(b.allocator);
+
+    for (rel_paths.items) |rel| {
+        const ext: []const u8 = if (std.mem.endsWith(u8, rel, ".luau")) ".luau" else ".lua";
+        const stem = rel[0 .. rel.len - ext.len];
+        const alias = b.fmt("@{s}", .{stem});
+
+        for (aliases.items) |existing| {
+            if (std.mem.eql(u8, existing, alias)) {
+                std.debug.print("error: duplicate std_lib module alias '{s}'\n", .{alias});
+                std.process.exit(2);
+            }
+        }
+        aliases.append(b.allocator, alias) catch {
+            std.debug.print("error: out of memory writing std_lib manifest\n", .{});
+            std.process.exit(2);
+        };
+
+        validateStdlibRelPath(rel);
+        const line = std.fmt.allocPrint(
+            b.allocator,
+            "    .{{ .spec = \"{s}\", .source = @embedFile(\"std_lib/{s}\") }},\n",
+            .{ alias, rel },
+        ) catch {
+            std.debug.print("error: out of memory writing std_lib manifest\n", .{});
+            std.process.exit(2);
+        };
+        out.appendSlice(b.allocator, line) catch {
+            std.debug.print("error: out of memory writing std_lib manifest\n", .{});
+            std.process.exit(2);
+        };
+    }
+
+    out.appendSlice(b.allocator, "};\n") catch {
+        std.debug.print("error: out of memory writing std_lib manifest\n", .{});
+        std.process.exit(2);
+    };
+
+    const manifest = wf.add("stdlib_manifest.zig", out.items);
+    return b.createModule(.{
+        .root_source_file = manifest,
+        .target = target,
+        .optimize = optimize,
+    });
+}
+
+fn pathLessThan(_: void, lhs: []const u8, rhs: []const u8) bool {
+    return std.mem.lessThan(u8, lhs, rhs);
+}
+
+fn validateStdlibRelPath(path: []const u8) void {
+    for (path) |c| {
+        const valid = std.ascii.isAlphanumeric(c) or c == '/' or c == '_' or c == '-' or c == '.';
+        if (!valid) {
+            std.debug.print("error: std_lib file '{s}' contains unsupported characters\n", .{path});
+            std.process.exit(2);
+        }
     }
 }
 

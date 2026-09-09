@@ -28,6 +28,14 @@ fn requireFn(L: *luau.State) callconv(.c) c_int {
     const spec = luau.getString(L, 1) orelse
         return raise(L, "require: expected a string module path", .{});
 
+    if (spec.len > 0 and spec[0] == '@')
+        return requireEmbedded(L, rt, spec);
+
+    if (rt.current_requirer) |requirer| {
+        if (requirer.len > 0 and requirer[0] == '@')
+            return raise(L, "require: embedded modules can only require @ modules ('{s}')", .{spec});
+    }
+
     var path_buf: [max_path_len]u8 = undefined;
     const base_len = resolvePath(rt.current_requirer orelse "", spec, &path_buf) orelse
         return raise(L, "require: invalid module path '{s}' (must stay inside the root directory)", .{spec});
@@ -122,6 +130,82 @@ fn requireFn(L: *luau.State) callconv(.c) c_int {
     rt.current_requirer = prev_requirer;
     rt.allocator.free(bytecode);
     return 1;
+}
+
+fn requireEmbedded(L: *luau.State, rt: *Runtime, spec: []const u8) c_int {
+    if (!validEmbeddedSpec(spec))
+        return raise(L, "require: invalid module path '{s}'", .{spec});
+
+    const module = rt.stdlib.find(spec) orelse
+        return raise(L, "require: module '{s}' not found", .{spec});
+    const chosen = module.spec;
+
+    luau.pushValue(L, luau.upvalueIndex(3)); // cache
+    _ = luau.getField(L, -1, chosen);
+    if (luau.typeOf(L, -1) != .nil) {
+        luau.pushValue(L, -1);
+        luau.replace(L, 1);
+        luau.settop(L, 1);
+        return 1;
+    }
+    luau.settop(L, 1); // back to [path]
+
+    if (rt.isLoading(chosen))
+        return raise(L, "require: cyclic dependency detected while loading '{s}'", .{chosen});
+
+    var chunk_buf: [max_path_len + 8]u8 = undefined;
+    const chunk_name = chunkName(chosen, &chunk_buf);
+
+    rt.pushLoading(chosen);
+    const prev_requirer = rt.current_requirer;
+    rt.current_requirer = chosen;
+
+    luau.pushValue(L, luau.upvalueIndex(2)); // env
+    luau.pushTracebackHandler(L); // [path, env, handler]
+
+    luau.loadBytecode(L, chunk_name, module.bytecode, -2) catch {
+        rt.popLoading();
+        rt.current_requirer = prev_requirer;
+        return raise(L, "require: failed to load module '{s}'", .{chosen});
+    };
+
+    if (luau.pcall(L, 0, 1, -2)) |_| {} else |_| {
+        rt.popLoading();
+        rt.current_requirer = prev_requirer;
+        return luau.errorRaise(L);
+    }
+
+    if (luau.typeOf(L, -1) == .nil) {
+        rt.popLoading();
+        rt.current_requirer = prev_requirer;
+        return raise(L, "require: module '{s}' must return a value", .{chosen});
+    }
+
+    luau.pushValue(L, luau.upvalueIndex(3)); // cache
+    luau.pushValue(L, -2); // result
+    luau.setField(L, -2, chosen); // cache[chosen] = result
+
+    luau.pushValue(L, -2); // result copy
+    luau.replace(L, 1);
+    luau.settop(L, 1);
+
+    rt.popLoading();
+    rt.current_requirer = prev_requirer;
+    return 1;
+}
+
+fn validEmbeddedSpec(spec: []const u8) bool {
+    if (spec.len < 2) return false;
+    if (std.mem.indexOfAny(u8, spec, "\\\x00") != null) return false;
+
+    var it = std.mem.splitScalar(u8, spec[1..], '/');
+    while (it.next()) |segment| {
+        if (segment.len == 0 or
+            std.mem.eql(u8, segment, ".") or
+            std.mem.eql(u8, segment, ".."))
+            return false;
+    }
+    return true;
 }
 
 fn resolvePath(requirer: []const u8, spec: []const u8, out: []u8) ?usize {

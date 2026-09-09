@@ -10,6 +10,7 @@ const HttpSession = zolt.Network.HttpSession;
 
 pub fn main(init: std.process.Init) !void {
     std.log.info("𐔌՞. .՞𐦯 ⚡︎ ⋆.˚ zoltd", .{});
+    std.log.info("version {s}", .{zolt.version});
     const config_path = parseConfigPath(init);
     std.log.info("using config {s}", .{config_path});
 
@@ -48,12 +49,13 @@ const RouteFactory = struct {
     root: Io.Dir,
     show_runtime_errors: bool,
     cache: ScriptCache,
+    stdlib: *const zolt.Stdlib.Catalog,
 
     fn init(ctx: *anyopaque, allocator: std.mem.Allocator) anyerror!*anyopaque {
         const self: *RouteFactory = @ptrCast(@alignCast(ctx));
         const handler = try allocator.create(RouteHandler);
         errdefer allocator.destroy(handler);
-        handler.* = try RouteHandler.init(allocator, self.root, self.show_runtime_errors, &self.cache);
+        handler.* = try RouteHandler.init(allocator, self.root, self.show_runtime_errors, &self.cache, self.stdlib);
         return handler;
     }
 
@@ -71,10 +73,17 @@ fn httpServerSetup(io: Io, config: zolt.Config, root: Io.Dir, allocator: std.mem
         return err;
     };
 
+    var stdlib = zolt.Stdlib.Catalog.init(allocator) catch |err| {
+        std.log.err("failed to compile embedded std_lib modules err={s}", .{@errorName(err)});
+        std.process.exit(13); // FAILED_STDLIB
+    };
+    defer stdlib.deinit();
+
     var factory = RouteFactory{
         .root = root,
         .show_runtime_errors = config.is_show_runtime_error,
         .cache = ScriptCache.init(allocator, ScriptCache.max_cached_scripts),
+        .stdlib = &stdlib,
     };
     defer factory.cache.deinit(io);
     const conn_handler: ConnHandler = .{

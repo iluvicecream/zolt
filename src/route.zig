@@ -5,6 +5,7 @@ const Dir = Io.Dir;
 const http = std.http;
 const runtime = @import("runtime/runtime.zig");
 const script_cache = @import("script_cache.zig");
+const stdlib_catalog = @import("runtime/stdlib.zig");
 const HttpRsp = @import("protocol/http_rsp.zig").HttpRsp;
 
 pub const max_content_size = 16 * 1024;
@@ -18,8 +19,14 @@ pub const RouteHandler = struct {
     cache: *ScriptCache,
     show_runtime_errors: bool,
 
-    pub fn init(allocator: std.mem.Allocator, root: Dir, show_runtime_errors: bool, cache: *ScriptCache) !RouteHandler {
-        const rt = try runtime.Runtime.init(allocator, cache, root);
+    pub fn init(
+        allocator: std.mem.Allocator,
+        root: Dir,
+        show_runtime_errors: bool,
+        cache: *ScriptCache,
+        stdlib: *const stdlib_catalog.Catalog,
+    ) !RouteHandler {
+        const rt = try runtime.Runtime.init(allocator, cache, root, stdlib);
         errdefer rt.deinit();
         return .{
             .allocator = allocator,

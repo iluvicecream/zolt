@@ -41,6 +41,7 @@
         "build.zig",
         "build.zig.zon",
         "src",
+        "std_lib",
         // For example...
         //"LICENSE",
         //"README.md",
