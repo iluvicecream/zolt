@@ -1,4 +1,4 @@
-HOL = require("hol_dev");
+HOL = require("@hol");
 local H = HOL.el
 
 local page = HOL.document()
@@ -8,7 +8,7 @@ local page = HOL.document()
             H("h1"):text("Welcome to My Website")
         ),
         H("main"):class("container"):child(
-            H("p"):text("This page is composed by HOL!")
+            H("p"):text("This page was composed by HOL!")
         )
     )
 

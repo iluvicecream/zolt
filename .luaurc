@@ -1,0 +1,6 @@
+{
+  "aliases": {
+    "hol": "./std_lib/hol.luau",
+    "hol-internal": "./std_lib/hol-internal"
+  }
+}
