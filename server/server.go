@@ -50,9 +50,9 @@ func (server *Server) handleRoutes(writer http.ResponseWriter, req *http.Request
 	state := server.luaPool.pool.Get().(*lua.State)
 	defer server.luaPool.pool.Put(state)
 
-	exec_ret := ExecutePath(reqPath, state)
-	writer.WriteHeader(exec_ret.GetRetcode())
-	writer.Write([]byte("test"))
+	execRet := ExecutePath(reqPath, state)
+	writer.WriteHeader(execRet.GetRetcode())
+	writer.Write(execRet.body)
 }
 
 func (server *Server) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
