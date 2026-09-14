@@ -2,7 +2,6 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"net/http"
 
 	"time"
@@ -10,13 +9,18 @@ import (
 	"github.com/iluvicecream/zolt/configSchema"
 	"github.com/iluvicecream/zolt/server"
 	"go.uber.org/config"
+	"go.uber.org/zap"
 )
 
 func main() {
+	logger, _ := zap.NewProduction()
+	defer logger.Sync()
+	sugar := logger.Sugar()
+
 	// Load Cfg From config.yaml in current working dir
 	provider, err := config.NewYAML(config.File(fmt.Sprintf("%s/config.yaml", "./")))
 	if err != nil {
-		log.Fatalf("Failed to load config: %v", err)
+		sugar.Fatalf("Error loading config: %v", err)
 	}
 
 	var cfg configSchema.ConfigSchema
@@ -31,8 +35,8 @@ func main() {
 		WriteTimeout: 10 * time.Second,
 	}
 
-	log.Printf("Starting server on :%d...", cfg.Port)
+	sugar.Infof("Listening on :%d", cfg.Port)
 	if err := httpServer.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalf("Server failed: %v", err)
+		sugar.Fatalf("Server failed to listen: %v", err)
 	}
 }
