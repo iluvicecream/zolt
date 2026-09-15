@@ -1,4 +1,5 @@
-# Bazel
-/bazel-*
-/.bazelbsp
-.idea
+# Build Artifact
+dist/
+
+# Jetbrains
+.idea/
