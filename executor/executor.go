@@ -8,24 +8,34 @@ import (
 	"go.uber.org/zap"
 )
 
+type Response struct {
+	StatusCode int
+	Body       bytes.Buffer
+}
+
 type Executor struct {
 	log *zap.Logger
 }
 
-func Execute(path string, log *zap.Logger) []byte {
+func Execute(path string, log *zap.Logger) Response {
 	LuaState := lua.NewState()
 	defer LuaState.Close()
 
-	executor.RegisterZapPrint(LuaState, log)
+	rsp := Response{}
+	rsp.StatusCode = 200
 
-	var echoBuf bytes.Buffer
-	executor.RegisterEcho(LuaState, &echoBuf)
+	executor.RegisterZapPrint(LuaState, log)
+	executor.RegisterEcho(LuaState, &rsp.Body)
+	executor.RegisterHttpStatus(LuaState, &rsp.StatusCode)
 
 	err := LuaState.DoFile(path)
 	if err != nil {
+		rsp.StatusCode = 500
+		rsp.Body.Reset()
+		rsp.Body.WriteString(err.Error())
 		log.Error("error occurred during function execution", zap.String("scriptPath", path), zap.Error(err))
-		return []byte("error during script execution")
+		return rsp
 	}
 
-	return echoBuf.Bytes()
+	return rsp
 }
