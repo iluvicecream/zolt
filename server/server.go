@@ -1,60 +1,37 @@
 package server
 
 import (
+	"context"
+	"net"
 	"net/http"
-	"runtime"
-	"sync"
 
-	"github.com/iluvicecream/zolt/vm/lua"
+	"go.uber.org/fx"
+	"go.uber.org/zap"
 )
 
-type LuaPool struct {
-	pool sync.Pool
-}
-
-func NewLuaPool() *LuaPool {
-	return &LuaPool{
-		pool: sync.Pool{
-			New: func() interface{} {
-				return lua.New()
-			},
+func NewHTTPServer(lc fx.Lifecycle, mux *http.ServeMux, log *zap.Logger) *http.Server {
+	srv := &http.Server{Addr: ":8080", Handler: mux}
+	lc.Append(fx.Hook{
+		OnStart: func(ctx context.Context) error {
+			ln, err := net.Listen("tcp", srv.Addr)
+			if err != nil {
+				return err
+			}
+			log.Info("Starting HTTP server at", zap.String("addr", srv.Addr))
+			go srv.Serve(ln)
+			return nil
 		},
+		OnStop: func(ctx context.Context) error {
+			return srv.Shutdown(ctx)
+		},
+	})
+	return srv
+}
+
+func NewServeMux(routes []Route) *http.ServeMux {
+	mux := http.NewServeMux()
+	for _, route := range routes {
+		mux.Handle(route.Pattern(), route)
 	}
-}
-
-type CommandFunc func(req *http.Request, state *lua.State) ([]byte, error)
-
-type Server struct {
-	mux      *http.ServeMux
-	luaPool  *LuaPool
-	commands map[string]CommandFunc
-}
-
-func New() *Server {
-	server := &Server{
-		mux:      http.NewServeMux(),
-		luaPool:  NewLuaPool(),
-		commands: map[string]CommandFunc{},
-	}
-
-	server.mux.HandleFunc("/{path...}", server.handleRoutes)
-	return server
-}
-
-func (server *Server) handleRoutes(writer http.ResponseWriter, req *http.Request) {
-	reqPath := req.PathValue("path")
-
-	runtime.LockOSThread()
-	defer runtime.UnlockOSThread()
-
-	state := server.luaPool.pool.Get().(*lua.State)
-	defer server.luaPool.pool.Put(state)
-
-	execRet := ExecutePath(reqPath, state)
-	writer.WriteHeader(execRet.GetRetcode())
-	writer.Write(execRet.body)
-}
-
-func (server *Server) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
-	server.mux.ServeHTTP(writer, req)
+	return mux
 }
