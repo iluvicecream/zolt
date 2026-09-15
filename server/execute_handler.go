@@ -35,7 +35,7 @@ func (handler *ExecuteHandler) ServeHTTP(writer http.ResponseWriter, req *http.R
 	doesExecuteScriptExist, err := scriptExistsInCWD(executePath)
 	if doesExecuteScriptExist {
 		rsp := executor.Execute(executePath, handler.log)
-		writer.Write([]byte(rsp))
+		writer.Write(rsp)
 	} else {
 		writer.WriteHeader(http.StatusInternalServerError)
 		writer.Write([]byte("script not found"))
