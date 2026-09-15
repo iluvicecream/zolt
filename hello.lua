@@ -1,2 +1,3 @@
-http_status(403)
-echo("hello")
+http_status(200)
+http_content_type("text/zoltd")
+echo("<h1>hello</h1>")

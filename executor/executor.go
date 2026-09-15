@@ -9,8 +9,9 @@ import (
 )
 
 type Response struct {
-	StatusCode int
-	Body       bytes.Buffer
+	StatusCode  int
+	ContentType string
+	Body        bytes.Buffer
 }
 
 type Executor struct {
@@ -27,6 +28,7 @@ func Execute(path string, log *zap.Logger) Response {
 	executor.RegisterZapPrint(LuaState, log)
 	executor.RegisterEcho(LuaState, &rsp.Body)
 	executor.RegisterHttpStatus(LuaState, &rsp.StatusCode)
+	executor.RegisterHttpContentType(LuaState, &rsp.ContentType)
 
 	err := LuaState.DoFile(path)
 	if err != nil {

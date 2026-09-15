@@ -11,3 +11,11 @@ func RegisterHttpStatus(state *lua.LState, status *int) {
 		return 0
 	}))
 }
+
+func RegisterHttpContentType(state *lua.LState, contentType *string) {
+	state.SetGlobal("http_content_type", state.NewFunction(func(state *lua.LState) int {
+		top := state.GetTop()
+		*contentType = state.ToString(top)
+		return 0
+	}))
+}
