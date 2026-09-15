@@ -2,23 +2,23 @@ package server
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"os"
 	"path/filepath"
 
 	"github.com/iluvicecream/zolt/executor"
-	"go.uber.org/zap"
 )
 
 type ExecuteHandler struct {
-	log *zap.Logger
+	log *slog.Logger
 }
 
 func (*ExecuteHandler) Pattern() string {
 	return "/{path...}"
 }
 
-func NewExecuteHandler(log *zap.Logger) *ExecuteHandler {
+func NewExecuteHandler(log *slog.Logger) *ExecuteHandler {
 	return &ExecuteHandler{log: log}
 }
 
@@ -41,7 +41,7 @@ func (handler *ExecuteHandler) ServeHTTP(writer http.ResponseWriter, req *http.R
 	} else {
 		writer.WriteHeader(http.StatusInternalServerError)
 		_, _ = writer.Write([]byte("script not found"))
-		handler.log.Error("script not found", zap.String("path", executePath), zap.Error(err))
+		handler.log.Error("script not found", "path", executePath, "err", err)
 	}
 }
 

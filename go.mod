@@ -3,12 +3,15 @@ module github.com/iluvicecream/zolt
 go 1.27
 
 require (
+	github.com/yuin/gopher-lua v1.1.2
+	go.uber.org/fx v1.24.0
+)
+
+require (
 	github.com/BurntSushi/toml v1.6.0 // indirect
-	github.com/yuin/gopher-lua v1.1.2 // indirect
 	go.uber.org/atomic v1.11.0 // indirect
 	go.uber.org/config v1.4.1 // indirect
 	go.uber.org/dig v1.19.0 // indirect
-	go.uber.org/fx v1.24.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	go.uber.org/tools v0.0.0-20190618225709-2cfd321de3ee // indirect
 	go.uber.org/zap v1.28.0 // indirect

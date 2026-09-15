@@ -1,13 +1,13 @@
 package executor
 
 import (
+	"log/slog"
 	"strings"
 
 	lua "github.com/yuin/gopher-lua"
-	"go.uber.org/zap"
 )
 
-func RegisterZapPrint(state *lua.LState, log *zap.Logger) {
+func RegisterZapPrint(state *lua.LState, log *slog.Logger) {
 	state.SetGlobal("print", state.NewFunction(func(state *lua.LState) int {
 		caller := strings.TrimSuffix(strings.TrimSpace(state.Where(1)), ":")
 		top := state.GetTop()
@@ -19,7 +19,7 @@ func RegisterZapPrint(state *lua.LState, log *zap.Logger) {
 
 		message := strings.Join(parts, "\t")
 
-		log.Info(message, zap.String("lua_src", caller), zap.String("source", "lua"))
+		log.Info(message, "lua_src", caller)
 
 		return 0
 	}))

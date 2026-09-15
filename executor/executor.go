@@ -2,10 +2,10 @@ package executor
 
 import (
 	"bytes"
+	"log/slog"
 
 	executor "github.com/iluvicecream/zolt/executor/env"
 	lua "github.com/yuin/gopher-lua"
-	"go.uber.org/zap"
 )
 
 type Response struct {
@@ -15,10 +15,10 @@ type Response struct {
 }
 
 type Executor struct {
-	log *zap.Logger
+	log *slog.Logger
 }
 
-func Execute(path string, log *zap.Logger) Response {
+func Execute(path string, log *slog.Logger) Response {
 	LuaState := lua.NewState()
 	defer LuaState.Close()
 
@@ -35,7 +35,7 @@ func Execute(path string, log *zap.Logger) Response {
 		rsp.StatusCode = 500
 		rsp.Body.Reset()
 		rsp.Body.WriteString(err.Error())
-		log.Error("error occurred during function execution", zap.String("scriptPath", path), zap.Error(err))
+		log.Error("error occurred during function execution", "scriptPath", path, "err", err)
 		return rsp
 	}
 
