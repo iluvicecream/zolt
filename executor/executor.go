@@ -23,7 +23,7 @@ func Execute(path string, log *zap.Logger) []byte {
 
 	err := LuaState.DoFile(path)
 	if err != nil {
-		log.Error("error occured during function execution", zap.String("scriptPath", path), zap.Error(err))
+		log.Error("error occurred during function execution", zap.String("scriptPath", path), zap.Error(err))
 		return []byte("error during script execution")
 	}
 
