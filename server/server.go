@@ -18,7 +18,9 @@ func NewHTTPServer(lc fx.Lifecycle, mux *http.ServeMux, log *zap.Logger) *http.S
 				return err
 			}
 			log.Info("Starting HTTP server at", zap.String("addr", srv.Addr))
-			go srv.Serve(ln)
+			go func() {
+				_ = srv.Serve(ln)
+			}()
 			return nil
 		},
 		OnStop: func(ctx context.Context) error {
