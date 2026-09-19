@@ -16,6 +16,8 @@ func Execute(path string, log *slog.Logger) protocol.HttpResponse {
 	LuaState := lua.NewState()
 	defer LuaState.Close()
 
+	LuaState.OpenLibs()
+
 	rsp := protocol.HttpResponse{}
 	rsp.StatusCode = 200
 
