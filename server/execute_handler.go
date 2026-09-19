@@ -27,7 +27,7 @@ func (handler *ExecuteHandler) ServeHTTP(writer http.ResponseWriter, req *http.R
 
 	doesExecutePathEndWithLua := filepath.Ext(executePath) == ".lua"
 	if !doesExecutePathEndWithLua {
-		//TODO: Serve Static File
+
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -36,6 +36,9 @@ func (handler *ExecuteHandler) ServeHTTP(writer http.ResponseWriter, req *http.R
 	if doesExecuteScriptExist {
 		rsp := executor.Execute(executePath, handler.log)
 		writer.Header().Add("Content-Type", rsp.ContentType)
+		for _, h := range rsp.Headers {
+			writer.Header().Add(h.Key, h.Value)
+		}
 		writer.WriteHeader(rsp.StatusCode)
 		_, _ = writer.Write(rsp.Body.Bytes())
 	} else {

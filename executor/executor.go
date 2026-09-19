@@ -1,34 +1,29 @@
 package executor
 
 import (
-	"bytes"
 	"log/slog"
 
-	executor "github.com/iluvicecream/zolt/executor/env"
+	"github.com/iluvicecream/zolt/protocol"
+	"github.com/iluvicecream/zolt/runtime"
 	lua "github.com/yuin/gopher-lua"
 )
-
-type Response struct {
-	StatusCode  int
-	ContentType string
-	Body        bytes.Buffer
-}
 
 type Executor struct {
 	log *slog.Logger
 }
 
-func Execute(path string, log *slog.Logger) Response {
+func Execute(path string, log *slog.Logger) protocol.HttpResponse {
 	LuaState := lua.NewState()
 	defer LuaState.Close()
 
-	rsp := Response{}
+	rsp := protocol.HttpResponse{}
 	rsp.StatusCode = 200
 
-	executor.RegisterZapPrint(LuaState, log)
-	executor.RegisterEcho(LuaState, &rsp.Body)
-	executor.RegisterHttpStatus(LuaState, &rsp.StatusCode)
-	executor.RegisterHttpContentType(LuaState, &rsp.ContentType)
+	runtime.RegisterZapPrint(LuaState, log)
+	runtime.RegisterEcho(LuaState, &rsp.Body)
+	runtime.RegisterHttpStatus(LuaState, &rsp.StatusCode)
+	runtime.RegisterHttpContentType(LuaState, &rsp.ContentType)
+	runtime.RegisterHttpHeaderAdd(LuaState, &rsp.Headers)
 
 	err := LuaState.DoFile(path)
 	if err != nil {
