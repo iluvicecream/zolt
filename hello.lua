@@ -1,7 +1,10 @@
-local utils = require("utils")
-local version = require("@version")
+local htmlkit = require("@htmlkit")
+local el = htmlkit.el
 
-http_status(200)
-http_header_add("PoweredBy","ZOLT")
-echo("<h1>hello</h1>")
-echo("<p>current version = " .. version.version .. "</p>")
+local page = htmlkit.document()
+    :title("Test")
+    :body(
+        el("h1"):text("hello world")
+    )
+
+echo(page:render())
