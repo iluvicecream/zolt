@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/iluvicecream/zolt/executor"
 )
@@ -53,6 +54,13 @@ func scriptExistsInCWD(filename string) (bool, error) {
 	}
 
 	targetPath := filepath.Join(cwd, filename)
+	relativePath, err := filepath.Rel(cwd, targetPath)
+	if err != nil {
+		return false, err
+	}
+	if relativePath == ".." || strings.HasPrefix(relativePath, ".."+string(filepath.Separator)) {
+		return false, nil
+	}
 
 	_, err = os.Stat(targetPath)
 	if err == nil {
