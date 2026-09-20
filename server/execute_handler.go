@@ -33,6 +33,12 @@ func (handler *ExecuteHandler) ServeHTTP(writer http.ResponseWriter, req *http.R
 		return
 	}
 
+	// if executePath is empty execute index.lua
+	if executePath == "" {
+		executePath = "index.lua"
+		req.SetPathValue("path", "index.lua")
+	}
+
 	doesExecutePathEndWithLua := filepath.Ext(executePath) == ".lua"
 	if !doesExecutePathEndWithLua {
 		writer.WriteHeader(http.StatusNotFound)
