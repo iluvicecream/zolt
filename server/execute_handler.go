@@ -27,6 +27,12 @@ func NewExecuteHandler(log *slog.Logger) *ExecuteHandler {
 func (handler *ExecuteHandler) ServeHTTP(writer http.ResponseWriter, req *http.Request) {
 	executePath := req.PathValue("path")
 
+	// static file serving
+	if strings.HasPrefix(executePath, "public/") {
+		http.ServeFile(writer, req, executePath)
+		return
+	}
+
 	doesExecutePathEndWithLua := filepath.Ext(executePath) == ".lua"
 	if !doesExecutePathEndWithLua {
 		writer.WriteHeader(http.StatusNotFound)
