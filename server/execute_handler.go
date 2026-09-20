@@ -41,7 +41,7 @@ func (handler *ExecuteHandler) ServeHTTP(writer http.ResponseWriter, req *http.R
 		writer.WriteHeader(rsp.StatusCode)
 		_, _ = writer.Write(rsp.Body.Bytes())
 	} else {
-		writer.WriteHeader(http.StatusInternalServerError)
+		writer.WriteHeader(http.StatusNotFound)
 		_, _ = writer.Write([]byte("script not found"))
 		handler.log.Error("script not found", "path", executePath, "err", err)
 	}
