@@ -3,6 +3,7 @@ package server
 import (
 	"errors"
 	"log/slog"
+	"maps"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -27,7 +28,6 @@ func (handler *ExecuteHandler) ServeHTTP(writer http.ResponseWriter, req *http.R
 
 	doesExecutePathEndWithLua := filepath.Ext(executePath) == ".lua"
 	if !doesExecutePathEndWithLua {
-
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
@@ -35,10 +35,8 @@ func (handler *ExecuteHandler) ServeHTTP(writer http.ResponseWriter, req *http.R
 	doesExecuteScriptExist, err := scriptExistsInCWD(executePath)
 	if doesExecuteScriptExist {
 		rsp := executor.Execute(req, executePath, handler.log)
+		maps.Copy(writer.Header(), rsp.Headers)
 		writer.Header().Add("Content-Type", rsp.ContentType)
-		for _, h := range rsp.Headers {
-			writer.Header().Add(h.Key, h.Value)
-		}
 		writer.WriteHeader(rsp.StatusCode)
 		_, _ = writer.Write(rsp.Body.Bytes())
 	} else {

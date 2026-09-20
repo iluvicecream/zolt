@@ -6,8 +6,10 @@ local page = htmlkit.document()
     :title("Test")
     :body(
         el("h1"):text("hello world"),
+        el("p"):text("your are requesting from user agent : " .. http_request.header["User-Agent"]),
         el("p"):text("current version : " .. version.version),
-        el("p"):text("current request path : " .. http_request.path)
+        el("p"):text("current request path : " .. http_request.path),
+        el("p"):text("current request method : " .. http_request.method)
     )
 
 http_content_type("text/html")
