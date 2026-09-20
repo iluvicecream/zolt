@@ -9,7 +9,8 @@ local page = htmlkit.document()
         el("p"):text("your are requesting from user agent : " .. http_request.header["User-Agent"]),
         el("p"):text("current version : " .. version.version),
         el("p"):text("current request path : " .. http_request.path),
-        el("p"):text("current request method : " .. http_request.method)
+        el("p"):text("current request method : " .. http_request.method),
+        el("p"):text("your ip address is : " .. http_request.ip)
     )
 
 http_content_type("text/html")

@@ -57,5 +57,7 @@ func RegisterHttpRequestTable(state *lua.LState, req *http.Request) {
 	}
 	state.SetField(reqTable, "header", headerTable)
 
+	state.SetField(reqTable, "ip", lua.LString(req.RemoteAddr))
+
 	state.SetGlobal("http_request", reqTable)
 }
