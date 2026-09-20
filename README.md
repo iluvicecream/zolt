@@ -9,7 +9,7 @@ a tiny go web server that speaks your language. you write your pages in lua and 
 getting zolt running is really easy terminal is all you need.
 
 ```bash
-curl -fsSL https://zolt-doc.perr.dev/public/asset/install-zolt.sh | bash
+curl -fsSL https://zolt-doc.perr.dev/public/install-zolt.sh | bash
 ```
 
 after that restart your shell (or run `source ~/.zshrc` / `source ~/.bashrc`)
