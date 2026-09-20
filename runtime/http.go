@@ -1,12 +1,14 @@
 package runtime
 
 import (
+	"net/http"
+
 	"github.com/iluvicecream/zolt/protocol"
 	lua "github.com/yuin/gopher-lua"
 )
 
 func RegisterHttpStatus(state *lua.LState, status *int) {
-	state.SetGlobal("http_status", state.NewFunction(func(state *lua.LState) int {
+	state.SetGlobal("http_set_status", state.NewFunction(func(state *lua.LState) int {
 		top := state.GetTop()
 		*status = state.ToInt(top)
 		return 0
@@ -32,4 +34,10 @@ func RegisterHttpHeaderAdd(state *lua.LState, header *[]protocol.HttpHeader) {
 		*header = append(*header, protocol.HttpHeader{Key: key, Value: value})
 		return 0
 	}))
+}
+
+func RegisterHttpRequestTable(state *lua.LState, req *http.Request) {
+	reqTable := state.NewTable()
+	state.SetField(reqTable, "path", lua.LString(req.PathValue("path")))
+	state.SetGlobal("http_request", reqTable)
 }

@@ -34,7 +34,7 @@ func (handler *ExecuteHandler) ServeHTTP(writer http.ResponseWriter, req *http.R
 
 	doesExecuteScriptExist, err := scriptExistsInCWD(executePath)
 	if doesExecuteScriptExist {
-		rsp := executor.Execute(executePath, handler.log)
+		rsp := executor.Execute(req, executePath, handler.log)
 		writer.Header().Add("Content-Type", rsp.ContentType)
 		for _, h := range rsp.Headers {
 			writer.Header().Add(h.Key, h.Value)

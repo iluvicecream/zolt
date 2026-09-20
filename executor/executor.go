@@ -4,6 +4,7 @@ import (
 	"embed"
 	"fmt"
 	"log/slog"
+	"net/http"
 	"strings"
 
 	"github.com/iluvicecream/zolt/protocol"
@@ -42,7 +43,7 @@ type Executor struct {
 	log *slog.Logger
 }
 
-func Execute(path string, log *slog.Logger) protocol.HttpResponse {
+func Execute(req *http.Request, path string, log *slog.Logger) protocol.HttpResponse {
 	LuaState := lua.NewState()
 	defer LuaState.Close()
 
@@ -60,6 +61,8 @@ func Execute(path string, log *slog.Logger) protocol.HttpResponse {
 	runtime.RegisterHttpStatus(LuaState, &rsp.StatusCode)
 	runtime.RegisterHttpContentType(LuaState, &rsp.ContentType)
 	runtime.RegisterHttpHeaderAdd(LuaState, &rsp.Headers)
+
+	runtime.RegisterHttpRequestTable(LuaState, req)
 
 	err := LuaState.DoFile(path)
 	if err != nil {
