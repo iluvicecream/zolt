@@ -251,6 +251,26 @@ function DocClass:js(src, attrs)
     return self
 end
 
+---@param attrs? Attributes
+---@return Document
+function DocClass:turbo(attrs)
+    if self._turbo then
+        return self
+    end
+    self._turbo = true
+    ---@type Attributes
+    local props = {
+        src = "https://cdn.jsdelivr.net/npm/@hotwired/turbo@latest/dist/turbo.es2017-esm.min.js",
+        type = "module",
+    }
+    if attrs then
+        for k, v in pairs(attrs) do
+            props[k] = v
+        end
+    end
+    return self:js(props.src, props)
+end
+
 ---@param ... OptionalNodeChild
 ---@return Document
 function DocClass:body(...)
