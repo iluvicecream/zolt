@@ -1,0 +1,13 @@
+:root {
+    color-scheme: light dark;
+    --background : light-dark(#FFFFFF,#000000);
+    --color-foreground : light-dark(#000000,#FFFFFF);
+}
+
+* {
+    background-color: var(--background);
+}
+
+body {
+    font-family: "Geist Mono", monospace;
+}
