@@ -43,6 +43,7 @@ func RegisterHttpRequestTable(state *lua.LState, req *http.Request) {
 	state.SetField(reqTable, "path", lua.LString(req.PathValue("path")))
 	state.SetField(reqTable, "method", lua.LString(req.Method))
 
+	// Header
 	headerTable := state.NewTable()
 	for key, values := range req.Header {
 		if len(values) == 1 {
@@ -58,6 +59,23 @@ func RegisterHttpRequestTable(state *lua.LState, req *http.Request) {
 	state.SetField(reqTable, "header", headerTable)
 
 	state.SetField(reqTable, "ip", lua.LString(req.RemoteAddr))
+
+	// Query Param
+	queryTable := state.NewTable()
+	for key, values := range req.URL.Query() {
+		if len(values) == 1 {
+			// Single value query param -> Lua string
+			state.SetField(queryTable, key, lua.LString(values[0]))
+		} else if len(values) > 1 {
+			// Multi-value query param (e.g., ?tag=a&tag=b) -> Lua array table
+			arrTable := state.NewTable()
+			for _, val := range values {
+				arrTable.Append(lua.LString(val))
+			}
+			state.SetField(queryTable, key, arrTable)
+		}
+	}
+	state.SetField(reqTable, "query", queryTable)
 
 	state.SetGlobal("http_request", reqTable)
 }
