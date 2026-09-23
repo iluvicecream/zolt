@@ -26,6 +26,7 @@ function data.render()
                     { 'ip', 'string', 'The client address, including port.' },
                     { 'header', 'table', 'Request headers. Keys use Go canonical casing, e.g. User-Agent.' },
                     { 'query', 'table', 'URL query parameters.' },
+                    { 'form', 'table', 'Submitted form data from the request body. Available for form requests, such as POST.' },
                 }, function(field)
                     return htmlkit.el('tr'):class("border-b border-olive-200"):child(
                         htmlkit.el('td'):class("py-2 pr-4 font-mono text-olive-900"):text(field[1]),
@@ -35,7 +36,7 @@ function data.render()
                 end)
             )
         ),
-        code_block.render('local user_agent = http_request.header["User-Agent"]\nlocal tag = http_request.query["tag"]')
+        code_block.render('local user_agent = http_request.header["User-Agent"]\nlocal tag = http_request.query["tag"]\nlocal email = http_request.form["email"]')
     )
 end
 
