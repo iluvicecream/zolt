@@ -1,0 +1,1 @@
+tailwindcss -i public/css/index.css -o public/css/bundle.css -w -m

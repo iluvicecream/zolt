@@ -12,7 +12,53 @@ data.sidebar = {
         items = {
             {
                 name = 'Installation',
-                path = '/get-started/installation'
+                slug = 'get-started/installation'
+            },
+            {
+                name = 'Getting Started',
+                slug = 'get-started/getting-started'
+            }
+        }
+    },
+    {
+        name = 'Runtime',
+        items = {
+            {
+                name = 'Output',
+                slug = 'runtime/output'
+            },
+            {
+                name = 'Request',
+                slug = 'runtime/request'
+            },
+            {
+                name = 'Set Status',
+                slug = 'runtime/set-status'
+            },
+            {
+                name = 'Content Type',
+                slug = 'runtime/content-type'
+            },
+            {
+                name = 'Header Add',
+                slug = 'runtime/header-add'
+            }
+        }
+    },
+    {
+        name = 'Modules',
+        items = {
+            {
+                name = '@htmlkit',
+                slug = 'runtime/htmlkit'
+            },
+            {
+                name = '@turbokit',
+                slug = 'runtime/turbokit'
+            },
+            {
+                name = '@version',
+                slug = 'runtime/version'
             }
         }
     }

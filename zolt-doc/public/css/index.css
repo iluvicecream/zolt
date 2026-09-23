@@ -1,13 +1,19 @@
-:root {
-    color-scheme: light dark;
-    --background : light-dark(#FFFFFF,#000000);
-    --color-foreground : light-dark(#000000,#FFFFFF);
-}
-
-* {
-    background-color: var(--background);
-}
+@import 'tailwindcss';
 
 body {
-    font-family: "Geist Mono", monospace;
+    @apply bg-olive-100;
+}
+
+main, body > div {
+    max-width: 80rem;
+    margin-inline: auto;
+}
+
+h1, h2, h3 {
+    letter-spacing: -0.02em;
+}
+
+pre {
+    white-space: pre-wrap;
+    word-break: break-word;
 }

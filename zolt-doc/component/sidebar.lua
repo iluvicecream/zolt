@@ -7,23 +7,29 @@ local M = {}
 
 local data = require('shared/data')
 local htmlkit = require('@htmlkit')
+local version = require('@version')
 
 function M.render_sidebar()
     local groups = {}
     for _ , group in ipairs(data.sidebar) do
         items_obj = {}
         for _ , items in ipairs(group.items) do
-            local item = htmlkit.el("a"):text(items.name):attr('href',items.path)
+            local path = 'index.lua?slug=' .. items.slug
+            local item = htmlkit.el("a"):text(items.name):attr('href',path)
+                :class("block py-1 text-sm text-olive-700 hover:text-olive-900 hover:underline")
             table.insert(items_obj,item);
         end
-        local group = htmlkit.el("div"):child(
-                htmlkit.el("h1"):text(group.name),
-                htmlkit.el("div"):child(unpack(items_obj))
+        local group = htmlkit.el("div"):class("mb-6"):child(
+                htmlkit.el("h1"):text(group.name):class("text-xs font-semibold uppercase tracking-wide text-olive-500 mb-2"),
+                htmlkit.el("div"):class("space-y-1"):child(unpack(items_obj))
         )
         table.insert(groups,group);
     end
 
-    local sidebar = htmlkit.el("div"):child(unpack(groups))
+    local sidebar = htmlkit.el("div"):class(""):child(
+            htmlkit.el("a"):text("Zolt"):attr("href","index.lua?slug=welcome"):class("text-2xl text-olive-950 font-bold mb-6 block"),
+            unpack(groups)
+    )
     return sidebar
 end
 
