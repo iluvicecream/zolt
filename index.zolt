@@ -1,9 +1,12 @@
 {{ lua `
-    http_content_type("text/html")
+    greet = require("greet")
 ` }}
 <!DOCTYPE html>
 <html>
     <head>
+        <meta charset="UTF-8">
+        <meta name="viewport" content="width=device-width, initial-scale=1.0">
+        <title>Zolt Web Application</title>
     </head>
 
     <body>
@@ -16,7 +19,7 @@
                 <input type="submit" value="Submit">
             </form>
         {{ else }}
-            <h1>Welcome {{ lua `echo(http_request.form["name"] or "User")` }}</h1>
+            <h1>{{ lua `greet.greet(http_request.form["name"] or "User")` }}</h1>
             <p>Thank you for submitting the form.</p>
         {{ end }}
     </body>

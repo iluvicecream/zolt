@@ -10,7 +10,6 @@ import (
 	"strings"
 
 	"github.com/iluvicecream/zolt/executor"
-	"github.com/iluvicecream/zolt/zoltexecutor"
 )
 
 type ExecuteHandler struct {
@@ -36,13 +35,8 @@ func (handler *ExecuteHandler) ServeHTTP(writer http.ResponseWriter, req *http.R
 
 	// if executePath is empty, execute index.lua
 	if executePath == "" {
-		// check if either index.lua or index.zolt exist
-		doesIndexLuaExist, _ := scriptExistsInCWD("index.lua")
 		doesIndexZoltExist, _ := scriptExistsInCWD("index.zolt")
-		if doesIndexLuaExist {
-			executePath = "index.lua"
-			req.SetPathValue("path", "index.lua")
-		} else if doesIndexZoltExist {
+		if doesIndexZoltExist {
 			executePath = "index.zolt"
 			req.SetPathValue("path", "index.zolt")
 		} else {
@@ -51,29 +45,21 @@ func (handler *ExecuteHandler) ServeHTTP(writer http.ResponseWriter, req *http.R
 		}
 	}
 
-	doesExecutePathEndWithLuaOrZolt := filepath.Ext(executePath) == ".lua" || filepath.Ext(executePath) == ".zolt"
-	if !doesExecutePathEndWithLuaOrZolt {
+	doesExecutePathEndWithZolt := filepath.Ext(executePath) == ".zolt"
+	if !doesExecutePathEndWithZolt {
 		writer.WriteHeader(http.StatusNotFound)
 		return
 	}
 
 	doesExecuteScriptExist, err := scriptExistsInCWD(executePath)
 	if doesExecuteScriptExist {
-		scriptExt := filepath.Ext(executePath)
-		switch scriptExt {
-		case ".zolt":
-			rsp := zoltexecutor.Execute(req, executePath, handler.log)
-			maps.Copy(writer.Header(), rsp.Headers)
+		rsp := executor.Execute(req, executePath, handler.log)
+		maps.Copy(writer.Header(), rsp.Headers)
+		if rsp.ContentType != "" {
 			writer.Header().Add("Content-Type", rsp.ContentType)
-			writer.WriteHeader(rsp.StatusCode)
-			_, _ = writer.Write(rsp.Body.Bytes())
-		case ".lua":
-			rsp := executor.Execute(req, executePath, handler.log)
-			maps.Copy(writer.Header(), rsp.Headers)
-			writer.Header().Add("Content-Type", rsp.ContentType)
-			writer.WriteHeader(rsp.StatusCode)
-			_, _ = writer.Write(rsp.Body.Bytes())
 		}
+		writer.WriteHeader(rsp.StatusCode)
+		_, _ = writer.Write(rsp.Body.Bytes())
 	} else {
 		writer.WriteHeader(http.StatusNotFound)
 		_, _ = writer.Write([]byte("script not found"))
