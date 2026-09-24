@@ -2,6 +2,7 @@ package zoltexecutor
 
 import (
 	"bytes"
+	"fmt"
 	"html/template"
 	"log/slog"
 	"net/http"
@@ -26,19 +27,48 @@ func Execute(req *http.Request, path string, log *slog.Logger) protocol.HttpResp
 	runtime.RegisterHttpHeaderAdd(LuaState, &rsp.Headers)
 	runtime.RegisterHttpRequestTable(LuaState, req)
 
+	var echoBuffer bytes.Buffer
+
+	LuaState.SetGlobal("echo", LuaState.NewFunction(func(L *lua.LState) int {
+		top := L.GetTop()
+		for i := 1; i <= top; i++ {
+			echoBuffer.WriteString(L.Get(i).String())
+		}
+		return 0
+	}))
+
 	funcMap := template.FuncMap{
-		"lua": func(code string) (template.HTML, error) {
-			var buf bytes.Buffer
-			LuaState.SetGlobal("echo", LuaState.NewFunction(func(L *lua.LState) int {
-				for i := 1; i <= L.GetTop(); i++ {
-					buf.WriteString(L.Get(i).String())
+		"lua": func(code string) (interface{}, error) {
+			echoBuffer.Reset()
+
+			err := LuaState.DoString("return " + code)
+			if err != nil {
+				err = LuaState.DoString(code)
+				if err != nil {
+					return nil, fmt.Errorf("lua error: %v", err)
 				}
-				return 0
-			}))
-			if err := LuaState.DoString(code); err != nil {
-				return "", err
 			}
-			return template.HTML(buf.String()), nil
+
+			if echoBuffer.Len() > 0 {
+				return template.HTML(echoBuffer.String()), nil
+			}
+
+			top := LuaState.GetTop()
+			if top > 0 {
+				retVal := LuaState.Get(top)
+				LuaState.Pop(1)
+
+				switch v := retVal.(type) {
+				case lua.LBool:
+					return bool(v), nil
+				case lua.LString:
+					return template.HTML(string(v)), nil
+				case lua.LNumber:
+					return fmt.Sprintf("%v", v), nil
+				}
+			}
+
+			return template.HTML(""), nil
 		},
 	}
 

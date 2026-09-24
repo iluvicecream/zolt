@@ -7,6 +7,17 @@
     </head>
 
     <body>
-        
+       {{ if lua `http_request.method == "GET"` }}
+            <h1>Welcome to Zolt!</h1>
+            <p>This is a simple web application built with Zolt.</p>
+            <form method="POST">
+                <label for="name">Enter your name:</label>
+                <input type="text" id="name" name="name" required>
+                <input type="submit" value="Submit">
+            </form>
+        {{ else }}
+            <h1>Welcome {{ lua `echo(http_request.form["name"] or "User")` }}</h1>
+            <p>Thank you for submitting the form.</p>
+        {{ end }}
     </body>
 </html>
