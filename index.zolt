@@ -1,0 +1,12 @@
+{{ lua `
+    http_content_type("text/html")
+` }}
+<!DOCTYPE html>
+<html>
+    <head>
+    </head>
+
+    <body>
+        
+    </body>
+</html>
